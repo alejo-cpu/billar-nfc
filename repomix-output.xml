@@ -1,0 +1,1041 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+css/
+  styles.css
+db/
+  schema.sql
+  tacos.db
+fonts/
+  inter.woff2
+  press-start-2p.woff2
+img/
+  logo.webp
+js/
+  app.js
+  config.js
+  db.js
+server/
+  server.py
+index.html
+README.md
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="css/styles.css">
+@font-face {
+  font-family: 'Inter';
+  src: url('../fonts/inter.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('../fonts/press-start-2p.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --hdp: #f0c928;
+  --hdp-soft: #fff1a8;
+  --panel2: #0c0e12;
+  --line: #2a2d33;
+  --text: #f3f1e9;
+  --muted: #90949d;
+  --red: #f65b5b;
+  --green: #37d67a;
+  --f-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-pixel: 'Press Start 2P', ui-monospace, 'Courier New', monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: radial-gradient(circle at 50% 5%, #26231a 0%, #101014 35%, #050607 75%, #020203 100%);
+  color: var(--text);
+  font-family: var(--f-body);
+  -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
+  user-select: none;
+  overflow: hidden;
+}
+
+.stage {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  padding: 8px 12px 8px;
+}
+
+.frame {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.screen {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /*animation: fadeIn .4s ease-out both;*/
+}
+
+.screen.home {
+  justify-content: center;
+}
+
+.screen.detail {
+  justify-content: flex-start;
+  padding-top: 8px;
+}
+
+/*
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+*/
+
+/* ============ placa superior ============ */
+.placa {
+  position: relative;
+  width: 90%;
+  background: linear-gradient(145deg, #202126 0%, #0d0e12 48%, #090a0d 100%);
+  border: 1px solid rgba(240, 201, 40, .25);
+  border-radius: 28px;
+  padding: 28px 22px 26px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .06);
+  text-align: center;
+  flex: none;
+  margin-top: 8px;
+}
+
+.placa::before, .placa::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--hdp);
+  box-shadow: 0 0 12px rgba(240, 201, 40, .7);
+}
+
+.placa::before {
+  left: 16px;
+}
+
+.placa::after {
+  right: 16px;
+}
+
+.placa .tagline {
+  font-size: 22px;
+  letter-spacing: 3px;
+  color: #a9a79f;
+  text-transform: uppercase;
+  margin-top: 8px;
+}
+
+.placa .plabel {
+  font-family: var(--f-pixel);
+  font-size: 16px;
+  letter-spacing: 3px;
+  color: var(--hdp);
+  margin-top: 20px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.logo {
+  display: block;
+  width: 250px;
+  max-height: 190px;
+  object-fit: contain;
+  margin: 0 auto;
+  filter: drop-shadow(0 0 22px rgba(240, 201, 40, .18));
+}
+
+/* ============ textos ============ */
+.kicker {
+  font-family: var(--f-pixel);
+  font-size: 16px;
+  letter-spacing: 2.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 20px;
+}
+
+.screen-title {
+  font-size: 36px;
+  font-weight: 700;
+  margin-top: 18px;
+  letter-spacing: 0.5px;
+}
+
+.screen-sub {
+  font-size: 20px;
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 85%;
+  text-align: center;
+  margin-top: 14px;
+}
+
+/* ============ lista de sensaciones ============ */
+.sens-list {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  width: 100%;
+  max-width: 85%;
+  margin-top: 24px;
+}
+
+.sens {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-left: 5px solid;
+  border-radius: 16px;
+  padding: 26px 20px;
+  text-align: left;
+}
+
+.sens b {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 20px;
+  letter-spacing: 3px;
+}
+
+.sens small {
+  display: block;
+  font-size: 17px;
+  color: var(--muted);
+  margin-top: 8px;
+  line-height: 1.55;
+  letter-spacing: 1px;
+}
+
+.sens.light {
+  border-left-color: var(--green);
+}
+
+.sens.balanced {
+  border-left-color: var(--hdp);
+}
+
+.sens.power {
+  border-left-color: var(--red);
+}
+
+.odot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* ============ flecha hacia el lector ============ */
+.scanner {
+  margin-top: 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.scan-title {
+  font-family: var(--f-pixel);
+  font-size: 20px;
+  letter-spacing: 4px;
+  color: var(--text);
+}
+
+.scan-sub {
+  font-size: 16px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+.arrow-wrap {
+  margin-top: 14px;
+  color: var(--hdp);
+}
+
+.arrow {
+  width: 64px;
+  height: auto;
+  animation: bob 1.6s ease-in-out infinite;
+  filter: drop-shadow(0 0 16px rgba(240, 200, 40, 0.5));
+}
+
+@keyframes bob {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: .6;
+  }
+  50% {
+    transform: translateY(14px);
+    opacity: 1;
+  }
+}
+
+/* ============ pantalla de detalle ============ */
+.type-pill {
+  display: inline-block;
+  margin-top: 14px;
+  margin-bottom: 12px;
+  padding: 10px 22px;
+  border: 1px solid var(--hdp);
+  border-radius: 999px;
+  color: var(--hdp);
+  font-family: var(--f-pixel);
+  font-size: 16px;
+  letter-spacing: 2.5px;
+}
+
+.type-tag {
+  font-size: 20px;
+  color: var(--muted);
+  letter-spacing: .5px;
+}
+
+.desc {
+  font-size: 18px;
+  color: #c8cad0;
+  line-height: 1.6;
+  max-width: 85%;
+  margin-top: 20px;
+  text-align: center;
+}
+
+.stats {
+  width: 100%;
+  max-width: 85%;
+  margin-top: 20px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 22px 24px;
+}
+
+.srow {
+  display: flex;
+  gap: 24px;
+}
+
+.scell {
+  flex: 1;
+  padding: 16px 0;
+  border-bottom: 1px solid #22252b;
+  min-width: 0;
+}
+
+.scell.full {
+  flex: none;
+  width: 100%;
+  border-bottom: 0;
+}
+
+.scell .lab {
+  font-family: var(--f-pixel);
+  font-size: 15px;
+  letter-spacing: 2.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.scell .val {
+  font-size: 17px;
+  font-weight: 600;
+  margin-top: 12px;
+}
+
+.scell .val.soft {
+  font-weight: 500;
+  color: #c8cad0;
+  line-height: 1.5;
+}
+
+.dots {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #2a2d33;
+}
+
+.dot.on {
+  background: var(--hdp);
+  box-shadow: 0 0 8px rgba(240, 201, 40, .5);
+}
+
+.divider {
+  width: 90px;
+  height: 1px;
+  background: #33363e;
+  margin: 28px auto;
+  flex: none;
+}
+
+.other-title {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.sens-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  width: 100%;
+  max-width: 85%;
+  margin-top: 16px;
+}
+
+.sens-grid .sens {
+  padding: 18px 16px;
+}
+
+.hint {
+  font-size: 20px;
+  color: var(--muted);
+  margin-top: 12px;
+}
+
+.hint b {
+  color: var(--hdp);
+}
+
+.foot {
+  margin-top: 28px;
+  font-family: var(--f-pixel);
+  font-size: 11px;
+  letter-spacing: 3.5px;
+  color: #6f7075;
+  text-transform: uppercase;
+}
+
+/* ============ leyendo ============ */
+.reading {
+  justify-content: center;
+}
+
+.ringwrap {
+  margin-top: 40px;
+  position: relative;
+  width: 104px;
+  height: 104px;
+}
+
+.nfc {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 64px;
+  height: 64px;
+  transform: translate(-50%, -50%);
+  color: var(--hdp);
+  filter: drop-shadow(0 0 12px rgba(240, 201, 40, .45));
+  animation: textPulse .4s ease-in-out infinite;
+}
+
+.ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 4px solid rgba(240, 201, 40, .22);
+  border-top-color: var(--hdp);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.reading-txt {
+  margin-top: 22px;
+  font-size: 20px;
+  color: var(--hdp);
+  letter-spacing: .08em;
+  animation: textPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes textPulse {
+  0%, 100% {
+    opacity: .55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+
+
+/* ============ standby ============ */
+.sleep {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1.6s ease;
+}
+
+.standby .sleep {
+  opacity: 1;
+}
+
+.standby * {
+  animation-play-state: paused !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition: none !important;
+  }
+}
+</file>
+
+<file path="db/schema.sql">
+CREATE TABLE IF NOT EXISTS tacos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  numero TEXT UNIQUE NOT NULL,
+  sensacion TEXT NOT NULL,
+  peso INTEGER NOT NULL,
+  agilidad INTEGER NOT NULL,
+  golpe TEXT,
+  sensacion_texto TEXT,
+  creado_en TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT OR IGNORE INTO tacos (numero, sensacion, peso, agilidad, golpe, sensacion_texto) VALUES
+  ('07', 'BALANCED', 3, 4, 'Equilibrado', 'Natural y estable'),
+  ('03', 'LIGHT', 2, 5, 'Suave', 'Ligera y rápida'),
+  ('05', 'LIGHT', 2, 4, 'Suave', 'Ágil y controlada'),
+  ('09', 'BALANCED', 4, 3, 'Equilibrado', 'Estable y predecible'),
+  ('12', 'POWER', 5, 2, 'Contundente', 'Sólida y firme'),
+  ('15', 'POWER', 4, 2, 'Contundente', 'Pesada y potente');
+</file>
+
+<file path="js/app.js">
+(function () {
+  const { useState, useEffect, useRef, useCallback } = React;
+  const h = React.createElement;
+
+  const SENS = {
+    LIGHT: {
+      color: 'var(--green)',
+      tag: 'Ligero · Ágil · Suave',
+      desc: 'Un taco ligero y ágil, con una sensación de golpe más suave. Fácil de mover y rápido en el toque.',
+      ideal: 'Jugadores que buscan rapidez, control fino y un golpe suave.',
+      other: 'Más ligero y ágil, con una sensación de golpe más suave. Buscá los tacos con la pegatina verde.'
+    },
+    BALANCED: {
+      color: 'var(--hdp)',
+      tag: 'Equilibrado · Estable · Versátil',
+      desc: 'Un taco con una sensación equilibrada entre ligereza y solidez. Fácil de controlar y cómodo para diferentes estilos de juego.',
+      ideal: 'Jugadores que buscan un taco cómodo y versátil, sin irse a ninguno de los extremos.',
+      other: 'Equilibrado y versátil, cómodo para cualquier estilo. Buscá los tacos con la pegatina amarilla.'
+    },
+    POWER: {
+      color: 'var(--red)',
+      tag: 'Sólido · Firme · Potente',
+      desc: 'Un taco sólido y firme, con mayor sensación de peso y contundencia en el golpe.',
+      ideal: 'Jugadores que buscan potencia, firmeza y contundencia.',
+      other: 'Más sólido y firme, con mayor sensación de peso y contundencia en el golpe. Buscá los tacos con la pegatina roja.'
+    }
+  };
+
+  const Logo = () => h('img', { src: 'img/logo.webp', alt: 'HDP Billar 1985', className: 'logo' });
+
+  const NFC = () => h('svg', { className: 'nfc', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1, strokeLinecap: 'round', 'aria-hidden': 'true' },
+    h('circle', { cx: 6.2, cy: 12, r: 1.2, fill: 'currentColor', stroke: 'none' }),
+    h('path', { d: 'M10 8.8a5.2 5.2 0 0 1 0 6.4' }),
+    h('path', { d: 'M13.6 6.2a9.4 9.4 0 0 1 0 11.6' })
+  );
+
+  const Placa = () => h('div', { className: 'placa' },
+    h(Logo),
+    h('div', { className: 'tagline' }, 'THE GOOD PLACE OF BILLIARDS'),
+    h('div', { className: 'plabel' }, 'IDENTIFICADOR')
+  );
+
+  const Dots = ({ v }) => h('div', { className: 'dots' },
+    [1, 2, 3, 4, 5].map(i => h('span', { key: i, className: 'dot' + (i <= v ? ' on' : '') }))
+  );
+
+  const Home = () => h('div', { className: 'screen home' },
+    h(Placa),
+    h('div', { className: 'kicker' }, 'HDP BILLAR · IDENTIFICADOR'),
+    h('h1', { className: 'screen-title' }, 'Elige tu sensación'),
+    h('p', { className: 'screen-sub' }, 'Cada taco tiene su carácter. Acercá el que tengas al lector para ver sus detalles.'),
+    h('div', { className: 'sens-list' }, ['LIGHT', 'BALANCED', 'POWER'].map(k =>
+      h('div', { key: k, className: 'sens ' + k.toLowerCase() },
+        h('b', null, k),
+        h('small', null, SENS[k].tag)
+      ))),
+    h('div', { className: 'scanner' },
+      h('div', { className: 'scan-title' }, 'ACERCA EL TACO'),
+      h('div', { className: 'scan-sub' }, 'al lector de abajo'),
+      h('div', { className: 'arrow-wrap' },
+        h('svg', { viewBox: '0 0 40 60', className: 'arrow', 'aria-hidden': 'true' },
+          h('line', { x1: 20, y1: 4, x2: 20, y2: 48, stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' }),
+          h('polyline', { points: '12,40 20,52 28,40', fill: 'none', stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round', strokeLinejoin: 'round' })
+        )
+      )
+    )
+  );
+
+  const Detail = ({ cue }) => {
+    const s = SENS[cue.sensacion];
+    const others = Object.keys(SENS).filter(k => k !== cue.sensacion);
+    return h('div', { className: 'screen detail' },
+      h(Placa),
+      h('div', { className: 'kicker' }, 'TACO ' + cue.numero),
+      h('div', { className: 'type-pill', style: { borderColor: s.color, color: s.color } }, cue.sensacion),
+      h('div', { className: 'type-tag' }, s.tag),
+      h('p', { className: 'desc' }, s.desc),
+      h('div', { className: 'stats' },
+        h('div', { className: 'srow' },
+          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'PESO'), h(Dots, { v: cue.peso })),
+          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'AGILIDAD'), h(Dots, { v: cue.agilidad }))
+        ),
+        h('div', { className: 'srow' },
+          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'GOLPE'), h('div', { className: 'val' }, cue.golpe)),
+          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'SENSACIÓN'), h('div', { className: 'val' }, cue.sensacion_texto))
+        ),
+        h('div', { className: 'scell full' }, h('div', { className: 'lab' }, 'IDEAL PARA'), h('div', { className: 'val soft' }, s.ideal))
+      ),
+      h('div', { className: 'divider' }),
+      h('div', { className: 'other-title' }, '¿Buscas otra sensación?'),
+      h('div', { className: 'sens-grid' }, others.map(k =>
+        h('div', { key: k, className: 'sens ' + k.toLowerCase() },
+          h('b', null, h('span', { className: 'odot', style: { background: SENS[k].color } }), k),
+          h('small', null, SENS[k].other)
+        ))),
+      h('div', { className: 'divider' }),
+      h('p', { className: 'hint' }, '¿No sabés cuál elegir? Empezá por ', h('b', null, 'BALANCED'), '.'),
+      h('div', { className: 'foot' }, 'HDP BILLAR · EST. 1985')
+    );
+  };
+
+  const Reading = () => h('div', { className: 'screen reading' },
+    h(Placa),
+    h('div', { className: 'ringwrap' }, h('span', { className: 'ring' }), h(NFC)),
+    h('p', { className: 'reading-txt' }, 'Leyendo etiqueta…')
+  );
+
+  function App() {
+    const [view, setView] = useState('home');
+    const [cue, setCue] = useState(null);
+    const [standby, setStandby] = useState(false);
+    const [run, setRun] = useState(0);
+    const idleRef = useRef(null);
+    const runId = useRef(0);
+    const cueRef = useRef(null);
+    cueRef.current = cue;
+
+    const resetIdle = useCallback(() => {
+      setStandby(false);
+      clearTimeout(idleRef.current);
+      idleRef.current = setTimeout(() => {
+        setView('home');
+        setCue(null);
+
+        // --- APAGADO AUTOMÁTICO ---
+        // Para volver a activar el apagado automatico, DESCOMENTAR LA ALINEA DE ABAJO:
+        // setStandby(true);
+      }, CONFIG.STANDBY_MS);
+    }, []);
+
+    const scan = useCallback(nfcCode => {
+      const id = ++runId.current;
+      setRun(r => r + 1);
+      setView('reading');
+      
+      const serie = CONFIG.NFC_MAP[nfcCode] || nfcCode;
+      
+      const espera = new Promise(r => setTimeout(r, CONFIG.READ_MS));
+      Promise.all([DB.getCue(serie, cueRef.current && cueRef.current.numero), espera])
+        .then(([c]) => { if (id === runId.current) { setCue(c); setView('detail'); } })
+        .catch(() => { if (id === runId.current) { setView('home'); } })
+        .finally(resetIdle);
+    }, [resetIdle]);
+
+    useEffect(() => {
+      window.NFC_SCAN = nfcCode => scan(nfcCode);
+      return () => { window.NFC_SCAN = null; clearTimeout(idleRef.current); };
+    }, [scan]);
+
+    useEffect(() => {
+      const buf = { v: '' };
+      const onKey = e => {
+        if (e.key === 'Enter') { 
+          resetIdle();
+          
+          if (buf.v.length >= 2) {
+            if (CONFIG.NFC_MAP[buf.v]) {
+              scan(buf.v);
+            } else {
+              console.warn('[NFC] Código no registrado:', buf.v);
+            }
+          }
+          buf.v = ''; 
+        }
+        else if (e.key.length === 1 && buf.v.length < 48) buf.v += e.key;
+      };
+      
+      window.addEventListener('keydown', onKey);
+      
+      return () => { 
+        window.removeEventListener('keydown', onKey); 
+      };
+    }, [resetIdle, scan]);
+
+    return h('div', { className: 'stage' + (standby ? ' standby' : '') },
+      h('div', { className: 'frame' },
+        view === 'home' ? h(Home) : (view === 'detail' && cue ? h(Detail, { cue }) : h(Reading))
+      ),
+      h('div', { className: 'sleep' })
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+})();
+</file>
+
+<file path="js/config.js">
+const CONFIG = {
+  READ_MS: 800,
+  STANDBY_MS: 2 * 60 * 1000,
+  
+  NFC_MAP: {
+    '00000039c250ec': '12',
+    '00000039ddab7c': '05',
+    '812acd7cf5aa04': '07'
+
+  }
+};
+</file>
+
+<file path="js/db.js">
+const DB = (function () {
+  const API = window.location.origin + '/api/taco';
+
+  const FALLBACK = {
+    numero: '07',
+    sensacion: 'BALANCED',
+    peso: 3,
+    agilidad: 4,
+    golpe: 'Equilibrado',
+    sensacion_texto: 'Natural y estable'
+  };
+
+  async function getCue(serie, excluir) {
+    try {
+      const url = serie
+        ? API + '/' + encodeURIComponent(serie)
+        : API + '/random' + (excluir ? '?except=' + encodeURIComponent(excluir) : '');
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    } catch (err) {
+      console.warn('[DB] servidor local no disponible, usando respaldo:', err);
+      return FALLBACK;
+    }
+  }
+
+  return { getCue, principal: () => FALLBACK };
+})();
+</file>
+
+<file path="server/server.py">
+#!/usr/bin/env python3
+import json
+import os
+import random
+import sqlite3
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs, unquote
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, 'db', 'tacos.db')
+SCHEMA_PATH = os.path.join(BASE_DIR, 'db', 'schema.sql')
+PORT = 8080
+
+# Columnas nuevas del esquema (numero, sensacion, peso, agilidad, golpe, sensacion_texto)
+COLS = 'numero, sensacion, peso, agilidad, golpe, sensacion_texto'
+
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    with open(SCHEMA_PATH, 'r', encoding='utf-8') as f:
+        conn.executescript(f.read())
+    conn.commit()
+    conn.close()
+    print('[DB] lista en ' + DB_PATH)
+
+
+def query(sql, params=()):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(sql, params).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+class Handler(SimpleHTTPRequestHandler):
+    def do_GET(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+
+        # Taco al azar (excluyendo el actual si viene ?except=...)
+        if path == '/api/taco/random':
+            exc = parse_qs(parsed.query).get('except', [None])[0]
+            if exc:
+                rows = query('SELECT ' + COLS + ' FROM tacos WHERE numero != ?', (exc,))
+            else:
+                rows = query('SELECT ' + COLS + ' FROM tacos')
+            return self.send_json(random.choice(rows) if rows else None)
+
+        # Taco específico por número
+        if path.startswith('/api/taco/'):
+            numero = unquote(path[len('/api/taco/'):])
+            rows = query('SELECT ' + COLS + ' FROM tacos WHERE numero = ?', (numero,))
+            return self.send_json(rows[0] if rows else None)
+
+        return super().do_GET()
+
+    def send_json(self, data):
+        if data is None:
+            body = json.dumps({'error': 'no encontrado'}, ensure_ascii=False).encode()
+            status = 404
+        else:
+            body = json.dumps(data, ensure_ascii=False).encode()
+            status = 200
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, fmt, *args):
+        pass
+
+
+if __name__ == '__main__':
+    os.chdir(BASE_DIR)
+    init_db()
+    print('Lector NFC sirviendo en http://localhost:' + str(PORT))
+    HTTPServer(('0.0.0.0', PORT), Handler).serve_forever()
+</file>
+
+<file path="index.html">
+<!doctype html>
+    <html lang="es">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <meta name="theme-color" content="#0a0a0c">
+        <meta name="color-scheme" content="dark">
+        <title>HDP Billar · Identifica tu taco</title>
+        <link rel="shortcut icon" href="/img/logo.webp" type="image/x-icon">
+        <link rel="stylesheet" href="css/styles.css">
+    </head>
+    <body>
+        <div id="root"></div>
+
+        <noscript>Se necesita JavaScript para el lector NFC.</noscript>
+
+        <script src="vendor/react.production.min.js"></script>
+        <script src="vendor/react-dom.production.min.js"></script>
+        <script src="js/config.js"></script>
+        <script src="js/db.js"></script>
+        <script src="js/app.js"></script>
+    </body>
+</html>
+</file>
+
+<file path="README.md">
+# Billar NFC — Identificación de tacos
+
+Pantalla vertical 9:16 para Raspberry Pi Zero 2W. Lee la etiqueta NFC del taco,
+consulta su información en una BBDD SQLite local y la muestra.
+
+## Estructura
+    billar-nfc/
+    ├── index.html
+    ├── css/styles.css
+    ├── vendor/            
+    ├── js/
+    │   ├── config.js      ← tiempos 
+    │   ├── db.js          ← cliente HTTP hacia el servidor local
+    │   └── app.js         ← interfaz
+    ├── server/
+    │   └── server.py     
+    ├── db/
+    │   ├── schema.sql     ← tabla + datos de ejemplo
+    │   └── tacos.db      
+    └── README.md
+
+## Probar rápido
+    cd Projects/billar-nfc/
+    python3 server/server.py
+
+
+## INICIAR KIOSK
+
+  ## iniciar servidor  
+    cd Projects/billar-nfc/  
+    python3 server/server.py
+    
+  ## Modo Kiosk 
+      chromium-browser --kiosk --noerrdialogs --disable-translate \
+    --force-device-scale-factor=1.4 \
+    http://localhost:8080
+
+La primera vez imprime `[DB] creada en .../db/tacos.db` (crea la base sola).
+Abrí en el navegador: **http://localhost:8080** (NO usar Live Server de VS Code
+para esto, porque no ejecuta la API).
+
+El botón **"↻ Simular lectura"** trae un taco al azar de la base.
+
+## Cargar / editar tacos
+Los tacos viven en SQLite (`db/tacos.db`). Los podés administrar con:
+    sqlite3 db/tacos.db
+
+Algunos comandos útiles:
+    .tables
+    SELECT serie, marca, modelo FROM tacos;
+    INSERT INTO tacos (serie, marca, modelo, estado) VALUES ('NUEVA-SERIE', 'MARCA', 'MODELO', 'EXCELENTE');
+    .quit
+
+Si querés reiniciar todo: borrá `db/tacos.db` y volvé a correr el servidor,
+que vuelve a crear la base con los datos de `db/schema.sql`.
+
+## Lector NFC real
+La página expone `window.NFC_SCAN('SERIE')`. Dos formas de conectarlo:
+
+- **Lector USB tipo teclado** (la mayoría de los lectores NFC baratos):
+  el lector escribe la serie + Enter, y la app lo captura sola. No hay que
+  configurar nada. Para probarlo tipear `PRV-12.9-00427` + Enter en el teclado.
+
+- **Lector GPIO** (PN532, RC522, etc.): un script en Python lee la tarjeta
+  y hace `requests.get('http://localhost:8080/api/taco/...')` o usa `xdotool`
+  para inyectar la serie como teclado. El punto de entrada siempre termina en
+  `NFC_SCAN(serie)`.
+
+## Kiosk en Pi Zero 2W
+
+1. Instalar dependencias:
+       sudo apt install chromium-browser unclutter
+
+2. Copiar la carpeta `billar-nfc/` a la Pi.
+
+3. Probar que todo arranca bien:
+       cd /home/pi/billar-nfc
+       python3 server/server.py
+       Abrir `http://localhost:8080` en Chromium y verificá que se vea.
+
+4. Autostart (arranca con la Pi sin necesidad de login). Creá el archivo:
+       nano ~/.config/lxsession/LXDE-pi/autostart
+
+   Con este contenido:
+
+       @xset s off
+       @xset -dpms
+       @xset s noblank
+       @unclutter -idle 0
+       @/usr/bin/python3 /home/pi/billar-nfc/server/server.py
+       @sleep 2
+       @chromium-browser --kiosk --noerrdialogs --disable-pinch \
+           --disable-restore-session-state --disable-infobars \
+           http://localhost:8080
+
+
+## Comportamiento
+- **Lectura**: anillo ~0.8 s → tarjeta con filas que aparecen escalonadas.
+- **Botón "↻ Simular lectura"**: trae otro taco al azar de SQLite.
+- **Animaciones ambiente**: corren ~2 min y quedan quietas.
+- **Standby**: 5 min sin actividad → funde a negro; cualquier toque, tecla
+  o lectura la despierta.
+- **Offline**: si por alguna razón el servidor no responde, la pantalla usa
+  un dato de respaldo.
+</file>
+
+</files>
