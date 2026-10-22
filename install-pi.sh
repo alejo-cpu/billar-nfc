@@ -82,9 +82,9 @@ run_step 2 "Configurando compositor Labwc para ocultar cursor" "
 XML
 "
 
-run_step 3 "Actualizando repositorios e instalando herramientas" "
+run_step 3 "Actualizando repositorios e instalando Chromium" "
   rm -rf '$HOME/.local/share/keyrings' 2>/dev/null || true
-  sudo apt update -y && sudo apt install -y chromium-browser wlrctl
+  sudo apt update -y && sudo apt install -y chromium-browser
 "
 
 run_step 4 "Creando entorno Python e instalando dependencias" "
@@ -107,16 +107,9 @@ pkill -f 'server.py' 2>/dev/null || true
 cd '$PROJECT_DIR'
 '$PROJECT_DIR/venv/bin/python3' '$PROJECT_DIR/server/server.py' &
 
-(
-  for delay in 2 4 6; do
-    sleep \$delay
-    which wlrctl >/dev/null 2>&1 && wlrctl pointer move 9999 9999 2>/dev/null || true
-  done
-) &
-
 sleep 2
 
-# Chromium con aceleración directa sin Vsync ni antialiasing innecesario
+# Chromium directo en Wayland nativo, modo táctil sin cursor y sin pérdidas de frames
 chromium-browser --kiosk \
   --ozone-platform=wayland \
   --touch-events=enabled \
@@ -170,7 +163,7 @@ check_item() {
 }
 
 check_item "Navegador Chromium" "which chromium-browser"
-check_item "Controlador Wayland (wlrctl)" "which wlrctl"
+check_item "Configuración Labwc" "test -f '$HOME/.config/labwc/rc.xml'"
 check_item "Entorno virtual Python" "test -f '$PROJECT_DIR/venv/bin/python3'"
 check_item "FastAPI Framework" "'$PROJECT_DIR/venv/bin/python3' -c 'import fastapi'"
 check_item "Servidor ASGI Uvicorn" "'$PROJECT_DIR/venv/bin/python3' -c 'import uvicorn'"
