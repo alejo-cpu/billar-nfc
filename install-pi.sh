@@ -40,16 +40,16 @@ run_step() {
   
   while kill -0 $pid 2>/dev/null; do
     i=$(( (i+1) % 10 ))
-    echo -ne "\r${C}[${step_num}/6]${NC} ${Y}${spin[$i]}${NC} ${W}${title}...${NC}"
+    echo -ne "\r${C}[${step_num}/7]${NC} ${Y}${spin[$i]}${NC} ${W}${title}...${NC}"
     sleep 0.1
   done
   
   wait $pid
   local exit_code=$?
   if [ $exit_code -eq 0 ]; then
-    echo -e "\r${C}[${step_num}/6]${NC} ${G}✔${NC} ${W}${title}${NC} ${G}[OK]${NC}"
+    echo -e "\r${C}[${step_num}/7]${NC} ${G}✔${NC} ${W}${title}${NC} ${G}[OK]${NC}"
   else
-    echo -e "\r${C}[${step_num}/6]${NC} ${R}✖${NC} ${W}${title}${NC} ${R}[FALLÓ]${NC}"
+    echo -e "\r${C}[${step_num}/7]${NC} ${R}✖${NC} ${W}${title}${NC} ${R}[FALLÓ]${NC}"
     echo -e "\n${R}Últimas líneas del registro de error:${NC}"
     tail -n 12 "$LOG_FILE"
     exit 1
@@ -57,16 +57,17 @@ run_step() {
 }
 
 run_step 1 "Limpiando gestores de contraseñas de Chromium" "rm -rf '$HOME/.local/share/keyrings' 2>/dev/null || true"
-run_step 2 "Actualizando repositorios APT" "sudo apt update -y"
-run_step 3 "Instalando Chromium, Unclutter y Xdotool" "sudo apt install -y chromium-browser unclutter xdotool"
-run_step 4 "Creando entorno Python e instalando dependencias" "
+run_step 2 "Configurando motor gráfico X11 nativo (Kiosk)" "sudo raspi-config nonint do_wayland W1 2>/dev/null || true"
+run_step 3 "Actualizando repositorios APT" "sudo apt update -y"
+run_step 4 "Instalando Chromium, Unclutter y Xdotool" "sudo apt install -y chromium-browser unclutter xdotool"
+run_step 5 "Creando entorno Python e instalando dependencias" "
   if [ ! -d '$PROJECT_DIR/venv' ]; then
     python3 -m venv '$PROJECT_DIR/venv'
   fi
   '$PROJECT_DIR/venv/bin/pip' install --upgrade pip
   '$PROJECT_DIR/venv/bin/pip' install -r '$PROJECT_DIR/requirements.txt'
 "
-run_step 5 "Generando lanzador start-kiosk.sh con auto-ocultamiento" "
+run_step 6 "Generando lanzador start-kiosk.sh con auto-ocultamiento" "
 cat << 'LAUNCHER' > '$PROJECT_DIR/start-kiosk.sh'
 #!/usr/bin/env bash
 xset s off
@@ -84,7 +85,7 @@ pkill -f 'server.py' 2>/dev/null || true
 cd '$PROJECT_DIR'
 '$PROJECT_DIR/venv/bin/python3' '$PROJECT_DIR/server/server.py' &
 
-# 3. Disparo en segundo plano: apenas abra Chromium, expulsa el cursor otra vez
+# 3. Expulsar cursor en segundo plano apenas termine de abrir Chromium
 (
   for delay in 2 4 7; do
     sleep \$delay
@@ -108,7 +109,7 @@ chromium-browser --kiosk \
 LAUNCHER
 chmod +x '$PROJECT_DIR/start-kiosk.sh'
 "
-run_step 6 "Registrando autoarranque del sistema" "
+run_step 7 "Registrando autoarranque del sistema" "
 mkdir -p '$HOME/.config/autostart'
 cat << 'AUTO' > '$HOME/.config/autostart/kiosk.desktop'
 [Desktop Entry]
