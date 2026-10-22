@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1 || true
-
 pkill -f 'server.py' 2>/dev/null || true
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,9 +16,9 @@ fi
 
 sleep 1.5
 
-mkdir -p /tmp/chromium-cache
+mkdir -p /dev/shm/chromium-cache
 
-chromium-browser --kiosk \
+nice -n -10 chromium-browser --kiosk \
   --touch-events=enabled \
   --password-store=basic \
   --noerrdialogs \
@@ -37,8 +35,10 @@ chromium-browser --kiosk \
   --disable-default-apps \
   --disable-breakpad \
   --disable-features=Translate,OptimizationHints,MediaRouter \
+  --enable-gpu-rasterization \
+  --enable-zero-copy \
   --renderer-process-limit=1 \
-  --disk-cache-dir=/tmp/chromium-cache \
-  --disk-cache-size=10485760 \
+  --disk-cache-dir=/dev/shm/chromium-cache \
+  --disk-cache-size=20971520 \
   --disable-smooth-scrolling \
   http://localhost:8080/
