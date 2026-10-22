@@ -20,7 +20,6 @@ sleep 1.5
 
 mkdir -p /tmp/chromium-cache
 
-# Chromium sin --ozone-platform=wayland para usar XWayland con GLAMOR (60 FPS fluidos en Pi 3B)
 chromium-browser --kiosk \
   --touch-events=enabled \
   --password-store=basic \
