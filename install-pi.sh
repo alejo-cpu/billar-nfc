@@ -70,14 +70,47 @@ run_step 2 "Asignando 128 MB de memoria a la GPU" "
   sudo raspi-config nonint do_memory_split 128 2>/dev/null || true
 "
 
-run_step 3 "Configurando compositor Labwc sin cursor" "
+run_step 3 "Instalando cursor binario 100% invisible" "
+  python3 - << 'PYEOF'
+import struct, os
+data = (
+    b'Xcur' +
+    struct.pack('<III', 16, 0x10000, 1) +
+    struct.pack('<III', 0xfffd0002, 1, 28) +
+    struct.pack('<IIIIIIIII', 36, 0xfffd0002, 1, 1, 1, 1, 0, 0, 0) +
+    struct.pack('<I', 0)
+)
+cursor_names = [
+    'default', 'left_ptr', 'arrow', 'top_left_arrow', 'pointer',
+    'cross', 'crosshair', 'hand1', 'hand2', 'text', 'xterm', 'wait',
+    'watch', 'move', 'dnd-none', 'dnd-move', 'dnd-copy'
+]
+paths = [
+    os.path.expanduser('~/.icons/default/cursors'),
+    os.path.expanduser('~/.icons/PiX/cursors'),
+    os.path.expanduser('~/.icons/Adwaita/cursors')
+]
+for p in paths:
+    os.makedirs(p, exist_ok=True)
+    for name in cursor_names:
+        with open(os.path.join(p, name), 'wb') as f:
+            f.write(data)
+PYEOF
+
   mkdir -p '$HOME/.config/labwc'
-  printf '<?xml version=\"1.0\"?>\n<labwc_config>\n  <theme>\n    <cursorSize>1</cursorSize>\n  </theme>\n</labwc_config>\n' > '$HOME/.config/labwc/rc.xml'
-  printf 'XCURSOR_SIZE=1\n' > '$HOME/.config/labwc/environment'
+  cat << 'XML' > '$HOME/.config/labwc/rc.xml'
+<?xml version=\"1.0\"?>
+<labwc_config>
+  <theme>
+    <cursorSize>1</cursorSize>
+  </theme>
+</labwc_config>
+XML
+  printf 'XCURSOR_THEME=default\nXCURSOR_SIZE=1\n' > '$HOME/.config/labwc/environment'
 
   sudo mkdir -p /etc/xdg/labwc
-  printf '<?xml version=\"1.0\"?>\n<labwc_config>\n  <theme>\n    <cursorSize>1</cursorSize>\n  </theme>\n</labwc_config>\n' | sudo tee /etc/xdg/labwc/rc.xml >/dev/null
-  printf 'XCURSOR_SIZE=1\n' | sudo tee /etc/xdg/labwc/environment >/dev/null
+  sudo cp '$HOME/.config/labwc/rc.xml' /etc/xdg/labwc/rc.xml 2>/dev/null || true
+  sudo cp '$HOME/.config/labwc/environment' /etc/xdg/labwc/environment 2>/dev/null || true
 "
 
 run_step 4 "Actualizando repositorios e instalando Chromium" "
@@ -97,34 +130,52 @@ run_step 6 "Generando lanzador start-kiosk.sh optimizado" "
 cat << 'LAUNCHER' > '$PROJECT_DIR/start-kiosk.sh'
 #!/usr/bin/env bash
 
-# Fijar CPU en 1.2 GHz fijos (modo performance)
 echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1 || true
 
 pkill -f 'server.py' 2>/dev/null || true
 
-cd '$PROJECT_DIR'
-'$PROJECT_DIR/venv/bin/python3' '$PROJECT_DIR/server/server.py' &
+DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
+cd \"\$DIR\"
 
-sleep 2
+export XCURSOR_THEME=default
+export XCURSOR_SIZE=1
+
+if [ -d \"\$DIR/venv\" ]; then
+  \"\$DIR/venv/bin/python3\" \"\$DIR/server/server.py\" &
+else
+  python3 \"\$DIR/server/server.py\" &
+fi
+
+sleep 1.5
+
+mkdir -p /tmp/chromium-cache
 
 chromium-browser --kiosk \
   --ozone-platform=wayland \
   --touch-events=enabled \
-  --blink-settings=primaryPointerType=4 \
   --password-store=basic \
   --noerrdialogs \
   --disable-infobars \
   --disable-translate \
-  --disable-features=TranslateUI,TouchpadAndWheelScrollLatching \
+  --disable-features=Translate,OptimizationHints,MediaRouter,DialMediaRouteProvider,IsolateOrigins,site-per-process \
   --disable-pinch \
   --disable-session-crashed-bubble \
   --overscroll-history-navigation=0 \
   --check-for-update-interval=31536000 \
-  --enable-gpu-rasterization \
-  --enable-zero-copy \
-  --disable-gpu-vsync \
+  --disable-background-networking \
+  --disable-component-update \
+  --disable-sync \
+  --disable-extensions \
+  --disable-default-apps \
+  --disable-breakpad \
+  --disable-dev-shm-usage \
+  --renderer-process-limit=1 \
+  --disable-site-isolation-trials \
+  --disk-cache-dir=/tmp/chromium-cache \
+  --disk-cache-size=20971520 \
+  --enable-gpu-compositing \
+  --ignore-gpu-blocklist \
   --disable-smooth-scrolling \
-  --renderer-process-limit=2 \
   http://localhost:8080/
 LAUNCHER
 chmod +x '$PROJECT_DIR/start-kiosk.sh'
