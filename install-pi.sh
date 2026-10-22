@@ -21,7 +21,7 @@ cat << 'BANNER'
                          EST. 1985 · QUIOSCO NFC
 BANNER
 echo -e "${D}================================================================${NC}"
-echo -e "${Y}▶ INSTALADOR DE QUIOSCO AUTOMATIZADO${NC}"
+echo -e "${Y}▶ INSTALADOR DE QUIOSCO AUTOMATIZADO (ULTRA-FLUIDO)${NC}"
 echo -e "${D}================================================================${NC}\n"
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -57,7 +57,7 @@ run_step() {
 }
 
 run_step 1 "Limpiando gestores de contraseñas de Chromium" "rm -rf '$HOME/.local/share/keyrings' 2>/dev/null || true"
-run_step 2 "Configurando motor gráfico X11 nativo (Kiosk)" "sudo raspi-config nonint do_wayland W1 2>/dev/null || true"
+run_step 2 "Configurando motor gráfico X11 nativo" "sudo raspi-config nonint do_wayland W1 2>/dev/null || true"
 run_step 3 "Actualizando repositorios APT" "sudo apt update -y"
 run_step 4 "Instalando Chromium, Unclutter y Xdotool" "sudo apt install -y chromium-browser unclutter xdotool"
 run_step 5 "Creando entorno Python e instalando dependencias" "
@@ -67,17 +67,18 @@ run_step 5 "Creando entorno Python e instalando dependencias" "
   '$PROJECT_DIR/venv/bin/pip' install --upgrade pip
   '$PROJECT_DIR/venv/bin/pip' install -r '$PROJECT_DIR/requirements.txt'
 "
-run_step 6 "Generando lanzador start-kiosk.sh con auto-ocultamiento" "
+run_step 6 "Generando lanzador start-kiosk.sh de alto rendimiento" "
 cat << 'LAUNCHER' > '$PROJECT_DIR/start-kiosk.sh'
 #!/usr/bin/env bash
 xset s off
 xset -dpms
 xset s noblank
 
-# 1. Teletransportar inmediatamente el cursor fuera de la pantalla
-which xdotool >/dev/null 2>&1 && xdotool mousemove 9999 9999 2>/dev/null || true
+# Poner CPU en modo rendimiento (evita tirones de reloj al escanear)
+echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1 || true
 
-# 2. Iniciar unclutter sin tiempo de espera
+# Expulsar cursor del monitor
+which xdotool >/dev/null 2>&1 && xdotool mousemove 9999 9999 2>/dev/null || true
 unclutter -idle 0 -root &
 
 pkill -f 'server.py' 2>/dev/null || true
@@ -85,7 +86,6 @@ pkill -f 'server.py' 2>/dev/null || true
 cd '$PROJECT_DIR'
 '$PROJECT_DIR/venv/bin/python3' '$PROJECT_DIR/server/server.py' &
 
-# 3. Expulsar cursor en segundo plano apenas termine de abrir Chromium
 (
   for delay in 2 4 7; do
     sleep \$delay
@@ -93,18 +93,26 @@ cd '$PROJECT_DIR'
   done
 ) &
 
-sleep 3
+sleep 2
 
+# Chromium con rasterizado por GPU directo y consumo mínimo de RAM
 chromium-browser --kiosk \
   --password-store=basic \
   --noerrdialogs \
   --disable-infobars \
   --disable-translate \
-  --disable-features=TranslateUI \
+  --disable-features=TranslateUI,TouchpadAndWheelScrollLatching \
   --disable-pinch \
   --disable-session-crashed-bubble \
   --overscroll-history-navigation=0 \
   --check-for-update-interval=31536000 \
+  --enable-gpu-rasterization \
+  --enable-zero-copy \
+  --renderer-process-limit=2 \
+  --disable-background-networking \
+  --disable-sync \
+  --disable-default-apps \
+  --memory-pressure-off \
   http://localhost:8080/
 LAUNCHER
 chmod +x '$PROJECT_DIR/start-kiosk.sh'
@@ -150,7 +158,7 @@ echo -e "\n${D}================================================================$
 if [ "$CHECK_COUNT" -eq "$TOTAL_CHECKS" ]; then
   echo -e "${G}✔ [$CHECK_COUNT/$TOTAL_CHECKS] TODOS LOS COMPONENTES INSTALADOS Y LISTOS${NC}"
   echo -e "${D}================================================================${NC}"
-  echo -e "\n${W}Todo configurado. Para iniciar el quiosco ejecuta:${NC}"
+  echo -e "\n${W}Todo configurado. Para iniciar el quiosco optimizado ejecuta:${NC}"
   echo -e "${C}sudo reboot${NC}\n"
 else
   echo -e "${R}⚠ [$CHECK_COUNT/$TOTAL_CHECKS] ALGUNOS COMPONENTES FALLARON${NC}"
