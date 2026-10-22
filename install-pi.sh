@@ -68,16 +68,12 @@ run_step 1 "Verificando motor gráfico Wayland" "
 
 run_step 2 "Configurando compositor Labwc sin cursor" "
   mkdir -p '$HOME/.config/labwc'
-  cat << 'XML' > '$HOME/.config/labwc/rc.xml'
-<?xml version=\"1.0\"?>
-<labwc_config>
-  <theme>
-    <cursorSize>1</cursorSize>
-  </theme>
-</labwc_config>
-XML
-  echo 'XCURSOR_SIZE=1' > '$HOME/.config/labwc/environment'
-  killall -HUP labwc 2>/dev/null || true
+  printf '<?xml version=\"1.0\"?>\n<labwc_config>\n  <theme>\n    <cursorSize>1</cursorSize>\n  </theme>\n</labwc_config>\n' > '$HOME/.config/labwc/rc.xml'
+  printf 'XCURSOR_SIZE=1\n' > '$HOME/.config/labwc/environment'
+
+  sudo mkdir -p /etc/xdg/labwc
+  printf '<?xml version=\"1.0\"?>\n<labwc_config>\n  <theme>\n    <cursorSize>1</cursorSize>\n  </theme>\n</labwc_config>\n' | sudo tee /etc/xdg/labwc/rc.xml >/dev/null
+  printf 'XCURSOR_SIZE=1\n' | sudo tee /etc/xdg/labwc/environment >/dev/null
 "
 
 run_step 3 "Actualizando repositorios e instalando Chromium" "
@@ -97,6 +93,7 @@ run_step 5 "Generando lanzador start-kiosk.sh optimizado" "
 cat << 'LAUNCHER' > '$PROJECT_DIR/start-kiosk.sh'
 #!/usr/bin/env bash
 
+# Fijar CPU en modo performance
 echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1 || true
 
 pkill -f 'server.py' 2>/dev/null || true
@@ -159,7 +156,7 @@ check_item() {
 }
 
 check_item "Navegador Chromium" "which chromium-browser"
-check_item "Configuración Labwc" "test -f '$HOME/.config/labwc/rc.xml'"
+check_item "Configuración Labwc sin cursor" "test -f '$HOME/.config/labwc/rc.xml'"
 check_item "Entorno virtual Python" "test -f '$PROJECT_DIR/venv/bin/python3'"
 check_item "FastAPI Framework" "'$PROJECT_DIR/venv/bin/python3' -c 'import fastapi'"
 check_item "Servidor ASGI Uvicorn" "'$PROJECT_DIR/venv/bin/python3' -c 'import uvicorn'"
