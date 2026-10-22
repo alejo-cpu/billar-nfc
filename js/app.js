@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  // Elementos DOM
+  // Cache DOM
   const views = {
     home: document.getElementById('view-home'),
     reading: document.getElementById('view-reading'),
@@ -23,13 +23,14 @@
   let idleTimer = null;
   let scanRunId = 0;
 
-  // Control de vistas
+  // Vistas
   function setView(name) {
     views.home.classList.toggle('active', name === 'home');
     views.reading.classList.toggle('active', name === 'reading');
     views.detail.classList.toggle('active', name === 'detail');
   }
 
+  // Dots
   function renderDots(container, count, color) {
     let html = '';
     for (let i = 1; i <= 5; i++) {
@@ -40,7 +41,7 @@
     container.innerHTML = html;
   }
 
-  // Recomendaciones
+  // Sugerencias
   function getSuggestions(cue) {
     const cats = DB.getCategorias();
     const light = cats.find(c => c.id === 'LIGHT') || { nombre: 'LIGHT', color: 'var(--green)', other_text: 'Más ligero y ágil.' };
@@ -59,7 +60,7 @@
     return [balanced, power];
   }
 
-  // Renderizado de datos
+  // Detalle
   function renderDetail(cue) {
     const color = cue.color || 'var(--hdp)';
 
@@ -86,7 +87,7 @@
     `).join('');
   }
 
-  // Timer de inactividad
+  // Inactividad
   function resetIdle() {
     sleepEl.classList.remove('active');
     clearTimeout(idleTimer);
@@ -95,7 +96,7 @@
     }, CONFIG.STANDBY_MS || 180000);
   }
 
-  // Proceso de lectura
+  // Escaneo
   async function triggerScan(nfcCode) {
     resetIdle();
     const currentId = ++scanRunId;
@@ -119,7 +120,7 @@
 
   window.NFC_SCAN = triggerScan;
 
-  // Lector de teclado
+  // Eventos teclado
   let keyBuffer = '';
   let keyTimeout = null;
 
