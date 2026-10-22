@@ -8,7 +8,7 @@
     <meta name="google" content="notranslate">
     <title>HDP Billar · Identifica tu taco</title>
     <link rel="shortcut icon" href="img/logo.webp" type="image/x-icon">
-    <link rel="stylesheet" href="css/styles.css?v=31">
+    <link rel="stylesheet" href="css/styles.css?v=32">
 </head>
 <body class="notranslate">
     <div class="stage" id="stage">
@@ -57,7 +57,10 @@
         <!-- Vista: Lectura -->
         <main id="view-reading" class="screen-body">
           <div class="ringwrap">
-            <div class="ring-spinner"></div>
+            <svg class="ring-spinner" viewBox="0 0 80 80">
+              <circle class="ring-bg" cx="40" cy="40" r="35" />
+              <circle class="ring-arc" cx="40" cy="40" r="35" />
+            </svg>
             <svg class="nfc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
               <circle cx="6.2" cy="12" r="1.2" fill="currentColor" stroke="none"></circle>
               <path d="M10 8.8a5.2 5.2 0 0 1 0 6.4"></path>
@@ -116,6 +119,6 @@
 
     <script src="js/config.js"></script>
     <script src="js/db.js"></script>
-    <script src="js/app.js?v=31"></script>
+    <script src="js/app.js?v=32"></script>
 </body>
 </html>

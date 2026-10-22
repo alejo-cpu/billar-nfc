@@ -253,13 +253,22 @@ html, body {
 .ring-spinner {
   width: 80px;
   height: 80px;
-  box-sizing: border-box;
-  border-radius: 50%;
-  border: 4px solid rgba(240, 201, 40, 0.18);
-  border-top-color: var(--hdp);
-  border-right-color: var(--hdp);
   will-change: transform;
   animation: spinRing 0.85s linear infinite;
+}
+
+.ring-bg {
+  fill: none;
+  stroke: rgba(240, 201, 40, 0.18);
+  stroke-width: 4;
+}
+
+.ring-arc {
+  fill: none;
+  stroke: var(--hdp);
+  stroke-width: 4;
+  stroke-dasharray: 110 110;
+  stroke-linecap: round;
 }
 
 @keyframes spinRing {

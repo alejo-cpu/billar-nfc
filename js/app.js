@@ -96,23 +96,24 @@
     }, CONFIG.STANDBY_MS || 180000);
   }
 
-  // Escaneo
+  // Escaneo desacoplado
   async function triggerScan(nfcCode) {
     resetIdle();
     const currentId = ++scanRunId;
     setView('reading');
 
     try {
-      const cue = await DB.getCue(nfcCode);
-      if (currentId !== scanRunId) return;
+      const cuePromise = DB.getCue(nfcCode);
 
-      renderDetail(cue);
+      setTimeout(async () => {
+        if (currentId !== scanRunId) return;
+        const cue = await cuePromise;
+        if (currentId !== scanRunId) return;
 
-      setTimeout(() => {
-        if (currentId === scanRunId) {
-          setView('detail');
-        }
+        renderDetail(cue);
+        setView('detail');
       }, CONFIG.READ_MS || 800);
+
     } catch (e) {
       if (currentId === scanRunId) setView('home');
     }
