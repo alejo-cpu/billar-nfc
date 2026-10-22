@@ -93,6 +93,552 @@ __pycache__/
 .idea/
 </file>
 
+<file path="index.html">
+<!doctype html>
+    <html lang="es">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <meta name="theme-color" content="#0a0a0c">
+        <meta name="color-scheme" content="dark">
+        <title>HDP Billar · Identifica tu taco</title>
+        <link rel="shortcut icon" href="/img/logo.webp" type="image/x-icon">
+        <link rel="stylesheet" href="css/styles.css">
+    </head>
+    <body>
+        <div id="root"></div>
+
+        <noscript>Se necesita JavaScript para el lector NFC.</noscript>
+
+        <script src="vendor/react.production.min.js"></script>
+        <script src="vendor/react-dom.production.min.js"></script>
+        <script src="js/config.js"></script>
+        <script src="js/db.js"></script>
+        <script src="js/app.js"></script>
+    </body>
+</html>
+</file>
+
+<file path="Procfile">
+web: uvicorn server.server:app --host 0.0.0.0 --port ${PORT:-8080}
+</file>
+
+<file path="README.md">
+# Billar NFC — Identificación de tacos
+
+Pantalla vertical 9:16 para Raspberry Pi Zero 2W. Lee la etiqueta NFC del taco,
+consulta su información en una BBDD SQLite local y la muestra.
+
+## Estructura
+    billar-nfc/
+    ├── index.html
+    ├── css/styles.css
+    ├── vendor/            
+    ├── js/
+    │   ├── config.js      ← tiempos 
+    │   ├── db.js          ← cliente HTTP hacia el servidor local
+    │   └── app.js         ← interfaz
+    ├── server/
+    │   └── server.py     
+    ├── db/
+    │   ├── schema.sql     ← tabla + datos de ejemplo
+    │   └── tacos.db      
+    └── README.md
+
+## Probar rápido
+    cd Projects/billar-nfc/
+    python3 server/server.py
+
+
+## INICIAR KIOSK
+
+  ## iniciar servidor  
+    cd Projects/billar-nfc/  
+    python3 server/server.py
+    
+  ## Modo Kiosk 
+      chromium-browser --kiosk --noerrdialogs --disable-translate \
+    --force-device-scale-factor=1.4 \
+    http://localhost:8080
+
+La primera vez imprime `[DB] creada en .../db/tacos.db` (crea la base sola).
+Abrí en el navegador: **http://localhost:8080** (NO usar Live Server de VS Code
+para esto, porque no ejecuta la API).
+
+El botón **"↻ Simular lectura"** trae un taco al azar de la base.
+
+## Cargar / editar tacos
+Los tacos viven en SQLite (`db/tacos.db`). Los podés administrar con:
+    sqlite3 db/tacos.db
+
+Algunos comandos útiles:
+    .tables
+    SELECT serie, marca, modelo FROM tacos;
+    INSERT INTO tacos (serie, marca, modelo, estado) VALUES ('NUEVA-SERIE', 'MARCA', 'MODELO', 'EXCELENTE');
+    .quit
+
+Si querés reiniciar todo: borrá `db/tacos.db` y volvé a correr el servidor,
+que vuelve a crear la base con los datos de `db/schema.sql`.
+
+## Lector NFC real
+La página expone `window.NFC_SCAN('SERIE')`. Dos formas de conectarlo:
+
+- **Lector USB tipo teclado** (la mayoría de los lectores NFC baratos):
+  el lector escribe la serie + Enter, y la app lo captura sola. No hay que
+  configurar nada. Para probarlo tipear `PRV-12.9-00427` + Enter en el teclado.
+
+- **Lector GPIO** (PN532, RC522, etc.): un script en Python lee la tarjeta
+  y hace `requests.get('http://localhost:8080/api/taco/...')` o usa `xdotool`
+  para inyectar la serie como teclado. El punto de entrada siempre termina en
+  `NFC_SCAN(serie)`.
+
+## Kiosk en Pi Zero 2W
+
+1. Instalar dependencias:
+       sudo apt install chromium-browser unclutter
+
+2. Copiar la carpeta `billar-nfc/` a la Pi.
+
+3. Probar que todo arranca bien:
+       cd /home/pi/billar-nfc
+       python3 server/server.py
+       Abrir `http://localhost:8080` en Chromium y verificá que se vea.
+
+4. Autostart (arranca con la Pi sin necesidad de login). Creá el archivo:
+       nano ~/.config/lxsession/LXDE-pi/autostart
+
+   Con este contenido:
+
+       @xset s off
+       @xset -dpms
+       @xset s noblank
+       @unclutter -idle 0
+       @/usr/bin/python3 /home/pi/billar-nfc/server/server.py
+       @sleep 2
+       @chromium-browser --kiosk --noerrdialogs --disable-pinch \
+           --disable-restore-session-state --disable-infobars \
+           http://localhost:8080
+
+
+## Comportamiento
+- **Lectura**: anillo ~0.8 s → tarjeta con filas que aparecen escalonadas.
+- **Botón "↻ Simular lectura"**: trae otro taco al azar de SQLite.
+- **Animaciones ambiente**: corren ~2 min y quedan quietas.
+- **Standby**: 5 min sin actividad → funde a negro; cualquier toque, tecla
+  o lectura la despierta.
+- **Offline**: si por alguna razón el servidor no responde, la pantalla usa
+  un dato de respaldo.
+</file>
+
+<file path="requirements.txt">
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+pydantic>=2.0.0
+python-multipart>=0.0.9
+</file>
+
+<file path="db/schema.sql">
+PRAGMA journal_mode = WAL;
+PRAGMA busy_timeout = 30000;
+
+CREATE TABLE IF NOT EXISTS categorias (
+  id TEXT PRIMARY KEY,
+  nombre TEXT NOT NULL,
+  color TEXT NOT NULL,
+  tagline TEXT NOT NULL,
+  descripcion_default TEXT NOT NULL,
+  ideal_default TEXT NOT NULL,
+  other_text TEXT NOT NULL,
+  peso_default INTEGER DEFAULT 3,
+  agilidad_default INTEGER DEFAULT 3,
+  golpe_default TEXT DEFAULT 'Equilibrado',
+  sensacion_texto_default TEXT DEFAULT 'Natural y estable',
+  es_estandar INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS tacos (
+  nfc_uid TEXT PRIMARY KEY,
+  numero TEXT UNIQUE NOT NULL,
+  categoria_id TEXT NOT NULL,
+  peso INTEGER NOT NULL DEFAULT 3,
+  agilidad INTEGER NOT NULL DEFAULT 3,
+  golpe TEXT DEFAULT 'Equilibrado',
+  sensacion_texto TEXT DEFAULT 'Natural y estable',
+  descripcion_custom TEXT,
+  ideal_custom TEXT,
+  actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (categoria_id) REFERENCES categorias(id)
+);
+
+CREATE TABLE IF NOT EXISTS usuarios (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  rol TEXT NOT NULL DEFAULT 'staff',
+  perm_crear INTEGER DEFAULT 1,
+  perm_editar INTEGER DEFAULT 1,
+  perm_eliminar INTEGER DEFAULT 0,
+  perm_categorias INTEGER DEFAULT 0
+);
+
+INSERT OR IGNORE INTO usuarios (username, password, rol, perm_crear, perm_editar, perm_eliminar, perm_categorias)
+VALUES ('admin', 'hdp1985', 'admin', 1, 1, 1, 1);
+
+INSERT OR IGNORE INTO categorias (id, nombre, color, tagline, descripcion_default, ideal_default, other_text, peso_default, agilidad_default, golpe_default, sensacion_texto_default, es_estandar) VALUES
+  ('LIGHT', 'LIGHT', '#37d67a', 'Ligero · Ágil · Suave', 'Un taco ligero y ágil, con una sensación de golpe más suave. Fácil de mover y rápido en el toque.', 'Jugadores que buscan rapidez, control fino y un golpe suave.', 'Más ligero y ágil, con una sensación de golpe más suave. Buscá los tacos con la pegatina verde.', 2, 4, 'Suave', 'Ágil y controlada', 1),
+  ('BALANCED', 'BALANCED', '#f0c928', 'Equilibrado · Estable · Versátil', 'Un taco con una sensación equilibrada entre ligereza y solidez. Fácil de controlar y cómodo para diferentes estilos de juego.', 'Jugadores que buscan un taco cómodo y versátil, sin irse a ninguno de los extremos.', 'Equilibrado y versátil, cómodo para cualquier estilo. Buscá los tacos con la pegatina amarilla.', 3, 3, 'Equilibrado', 'Natural y estable', 1),
+  ('POWER', 'POWER', '#f65b5b', 'Sólido · Firme · Potente', 'Un taco sólido y firme, con mayor sensación de peso y contundencia en el golpe.', 'Jugadores que buscan potencia, firmeza y contundencia.', 'Más sólido y firme, con mayor sensación de peso y contundencia en el golpe. Buscá los tacos con la pegatina roja.', 5, 2, 'Contundente', 'Sólida y firme', 1);
+
+INSERT OR IGNORE INTO tacos (nfc_uid, numero, categoria_id, peso, agilidad, golpe, sensacion_texto, descripcion_custom, ideal_custom) VALUES
+  ('812acd7cf5aa04', '07', 'BALANCED', 3, 4, 'Equilibrado', 'Natural y estable', NULL, NULL),
+  ('00000039ddab7c', '05', 'LIGHT', 2, 4, 'Suave', 'Ágil y controlada', NULL, NULL),
+  ('00000039c250ec', '12', 'POWER', 5, 2, 'Contundente', 'Sólida y firme', NULL, NULL),
+  ('81268da9f39704', '01', 'LIGHT', 2, 5, 'Suave', 'Ligera y rápida', NULL, NULL),
+  ('81268da9f39804', '02', 'LIGHT', 2, 4, 'Suave', 'Fácil control', NULL, NULL),
+  ('81268da9f39a04', '03', 'BALANCED', 3, 3, 'Equilibrado', 'Natural y estable', NULL, NULL),
+  ('81268da9f3a304', '04', 'BALANCED', 4, 3, 'Equilibrado', 'Estable y firme', NULL, NULL),
+  ('81268da9f3aa04', '10', 'POWER', 5, 1, 'Contundente', 'Pesada y potente', NULL, NULL);
+</file>
+
+<file path="server/server.py">
+#!/usr/bin/env python3
+import os
+import sys
+import re
+import sqlite3
+from typing import Optional
+from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pydantic import BaseModel, field_validator
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+DB_PATH = os.path.join(BASE_DIR, 'db', 'tacos.db')
+SCHEMA_PATH = os.path.join(BASE_DIR, 'db', 'schema.sql')
+
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'hdp1985')
+STANDARD_CATS = {'LIGHT', 'BALANCED', 'POWER'}
+
+app = FastAPI(title="HDP Billar NFC API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+def get_db():
+    conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode = WAL;")
+    conn.execute("PRAGMA busy_timeout = 30000;")
+    return conn
+
+def init_db():
+    os.makedirs(os.path.join(BASE_DIR, 'db'), exist_ok=True)
+    conn = get_db()
+    try:
+        with open(SCHEMA_PATH, 'r', encoding='utf-8') as f:
+            conn.executescript(f.read())
+        conn.commit()
+    finally:
+        conn.close()
+
+init_db()
+
+def get_next_available_number(conn):
+    rows = conn.execute("SELECT numero FROM tacos").fetchall()
+    existing = set()
+    for r in rows:
+        try:
+            existing.add(int(r["numero"]))
+        except (ValueError, TypeError):
+            pass
+    n = 1
+    while n in existing:
+        n += 1
+    return f"{n:02d}"
+
+class LoginRequest(BaseModel):
+    password: str
+
+class CategoriaModel(BaseModel):
+    id: str
+    nombre: str
+    color: str
+    tagline: str
+    descripcion_default: str
+    ideal_default: str
+    other_text: Optional[str] = None
+    peso_default: Optional[int] = 3
+    agilidad_default: Optional[int] = 3
+    golpe_default: Optional[str] = "Equilibrado"
+    sensacion_texto_default: Optional[str] = "Natural y estable"
+    es_estandar: Optional[int] = 0
+
+    @field_validator('id', 'nombre')
+    @classmethod
+    def to_upper_clean(cls, v: str):
+        cleaned = v.strip().upper()
+        if not cleaned:
+            raise ValueError('Campo obligatorio no puede estar vacío.')
+        return cleaned
+
+class TacoModel(BaseModel):
+    nfc_uid: str
+    numero: Optional[str] = None
+    categoria_id: str
+    peso: int
+    agilidad: int
+    golpe: Optional[str] = "Equilibrado"
+    sensacion_texto: Optional[str] = "Natural y estable"
+    descripcion_custom: Optional[str] = None
+    ideal_custom: Optional[str] = None
+
+    @field_validator('nfc_uid')
+    @classmethod
+    def validate_uid(cls, v: str):
+        cleaned = v.strip().lower()
+        if not re.match(r'^[0-9a-f]{4,32}$', cleaned):
+            raise ValueError('El UID debe contener entre 4 y 32 caracteres hexadecimales (0-9, a-f).')
+        return cleaned
+
+    @field_validator('numero')
+    @classmethod
+    def validate_numero(cls, v: Optional[str]):
+        if v is not None and v.strip() != "":
+            cleaned = v.strip()
+            if not re.match(r'^[0-9]{1,4}$', cleaned):
+                raise ValueError('El número debe contener exclusivamente dígitos numéricos.')
+            return cleaned
+        return None
+
+def verify_admin(x_admin_password: Optional[str] = Header(None)):
+    if not x_admin_password or x_admin_password != ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="No autorizado")
+    return True
+
+@app.post("/api/auth/login")
+def login(req: LoginRequest):
+    conn = get_db()
+    try:
+        user = conn.execute("SELECT * FROM usuarios WHERE password = ?", (req.password,)).fetchone()
+        if user or req.password == ADMIN_PASSWORD:
+            perms = {
+                "crear": bool(user["perm_crear"]) if user else True,
+                "editar": bool(user["perm_editar"]) if user else True,
+                "eliminar": bool(user["perm_eliminar"]) if user else True,
+                "categorias": bool(user["perm_categorias"]) if user else True,
+                "rol": user["rol"] if user else "admin"
+            }
+            return {"status": "ok", "token": req.password, "permisos": perms}
+        raise HTTPException(status_code=401, detail="Contraseña incorrecta")
+    finally:
+        conn.close()
+
+@app.get("/api/sync")
+def sync_data():
+    conn = get_db()
+    try:
+        cats = conn.execute("SELECT * FROM categorias").fetchall()
+        cues = conn.execute("""
+            SELECT t.*, c.nombre as cat_nombre, c.color as cat_color, c.tagline as cat_tagline,
+                   c.descripcion_default, c.ideal_default, c.other_text, c.es_estandar
+            FROM tacos t
+            JOIN categorias c ON t.categoria_id = c.id
+        """).fetchall()
+        return {
+            "categorias": [dict(c) for c in cats],
+            "tacos": [dict(t) for t in cues],
+            "version": os.path.getmtime(DB_PATH) if os.path.exists(DB_PATH) else 1
+        }
+    finally:
+        conn.close()
+
+@app.get("/api/tacos")
+def list_tacos():
+    conn = get_db()
+    try:
+        cues = conn.execute("""
+            SELECT t.*, c.nombre as cat_nombre, c.color as cat_color, c.es_estandar, c.ideal_default
+            FROM tacos t
+            JOIN categorias c ON t.categoria_id = c.id
+            ORDER BY CAST(t.numero AS INTEGER) ASC, t.numero ASC
+        """).fetchall()
+        return [dict(t) for t in cues]
+    finally:
+        conn.close()
+
+@app.get("/api/tacos/next-number")
+def get_next_number():
+    conn = get_db()
+    try:
+        return {"next_number": get_next_available_number(conn)}
+    finally:
+        conn.close()
+
+@app.get("/api/taco/{uid_or_numero}")
+def get_taco(uid_or_numero: str):
+    conn = get_db()
+    try:
+        cue = conn.execute("""
+            SELECT t.*, c.nombre as cat_nombre, c.color as cat_color, c.tagline as cat_tagline,
+                   c.descripcion_default, c.ideal_default, c.other_text, c.es_estandar
+            FROM tacos t
+            JOIN categorias c ON t.categoria_id = c.id
+            WHERE LOWER(t.nfc_uid) = LOWER(?) OR LOWER(t.numero) = LOWER(?)
+        """, (uid_or_numero, uid_or_numero)).fetchone()
+        if not cue:
+            raise HTTPException(status_code=404, detail="Taco no encontrado")
+        
+        item = dict(cue)
+        item["sensacion"] = item["cat_nombre"]
+        item["color"] = item["cat_color"]
+        item["descripcion"] = item["descripcion_custom"] if item["descripcion_custom"] else item["descripcion_default"]
+        item["ideal"] = item["ideal_custom"] if item["ideal_custom"] else item["ideal_default"]
+        item["tag"] = item["cat_tagline"]
+        return item
+    finally:
+        conn.close()
+
+@app.post("/api/tacos")
+def create_taco(taco: TacoModel, authorized: bool = Depends(verify_admin)):
+    conn = get_db()
+    try:
+        with conn:
+            numero = taco.numero if taco.numero else get_next_available_number(conn)
+            conn.execute("""
+                INSERT INTO tacos (nfc_uid, numero, categoria_id, peso, agilidad, golpe, sensacion_texto, descripcion_custom, ideal_custom)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                taco.nfc_uid,
+                numero,
+                taco.categoria_id,
+                taco.peso,
+                taco.agilidad,
+                taco.golpe,
+                taco.sensacion_texto,
+                taco.descripcion_custom,
+                taco.ideal_custom
+            ))
+        return {"status": "ok", "numero": numero}
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=400, detail="El UID NFC o el Número ya están registrados.")
+    finally:
+        conn.close()
+
+@app.put("/api/tacos/{nfc_uid}")
+def update_taco(nfc_uid: str, taco: TacoModel, authorized: bool = Depends(verify_admin)):
+    conn = get_db()
+    try:
+        with conn:
+            numero = taco.numero if taco.numero else get_next_available_number(conn)
+            conn.execute("""
+                UPDATE tacos
+                SET numero = ?, categoria_id = ?, peso = ?, agilidad = ?, golpe = ?, sensacion_texto = ?, descripcion_custom = ?, ideal_custom = ?, actualizado_en = CURRENT_TIMESTAMP
+                WHERE LOWER(nfc_uid) = LOWER(?)
+            """, (
+                numero,
+                taco.categoria_id,
+                taco.peso,
+                taco.agilidad,
+                taco.golpe,
+                taco.sensacion_texto,
+                taco.descripcion_custom,
+                taco.ideal_custom,
+                nfc_uid.lower().strip()
+            ))
+        return {"status": "ok"}
+    finally:
+        conn.close()
+
+@app.delete("/api/tacos/{nfc_uid}")
+def delete_taco(nfc_uid: str, authorized: bool = Depends(verify_admin)):
+    conn = get_db()
+    try:
+        with conn:
+            conn.execute("DELETE FROM tacos WHERE LOWER(nfc_uid) = LOWER(?)", (nfc_uid.lower().strip(),))
+        return {"status": "ok"}
+    finally:
+        conn.close()
+
+@app.get("/api/categorias")
+def list_categorias():
+    conn = get_db()
+    try:
+        cats = conn.execute("SELECT * FROM categorias ORDER BY es_estandar DESC, nombre ASC").fetchall()
+        return [dict(c) for c in cats]
+    finally:
+        conn.close()
+
+@app.post("/api/categorias")
+def create_or_update_categoria(cat: CategoriaModel, authorized: bool = Depends(verify_admin)):
+    if cat.id in STANDARD_CATS:
+        raise HTTPException(status_code=400, detail="Las categorías estándar (LIGHT, BALANCED, POWER) son fijas y no se pueden modificar.")
+    
+    conn = get_db()
+    try:
+        with conn:
+            conn.execute("""
+                INSERT OR REPLACE INTO categorias (id, nombre, color, tagline, descripcion_default, ideal_default, other_text, peso_default, agilidad_default, golpe_default, sensacion_texto_default, es_estandar)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+            """, (
+                cat.id,
+                cat.nombre,
+                cat.color.strip(),
+                cat.tagline.strip(),
+                cat.descripcion_default.strip(),
+                cat.ideal_default.strip(),
+                cat.other_text.strip() if cat.other_text else cat.descripcion_default.strip(),
+                cat.peso_default or 3,
+                cat.agilidad_default or 3,
+                cat.golpe_default or "Equilibrado",
+                cat.sensacion_texto_default or "Natural y estable"
+            ))
+        return {"status": "ok"}
+    finally:
+        conn.close()
+
+@app.delete("/api/categorias/{cat_id}")
+def delete_categoria(cat_id: str, authorized: bool = Depends(verify_admin)):
+    if cat_id in STANDARD_CATS:
+        raise HTTPException(status_code=400, detail="No se pueden eliminar las categorías estándar.")
+        
+    conn = get_db()
+    try:
+        with conn:
+            usage = conn.execute("SELECT COUNT(*) FROM tacos WHERE categoria_id = ?", (cat_id,)).fetchone()[0]
+            if usage > 0:
+                raise HTTPException(status_code=400, detail="No puedes eliminar una categoría con tacos asignados.")
+            conn.execute("DELETE FROM categorias WHERE id = ? AND es_estandar = 0", (cat_id,))
+        return {"status": "ok"}
+    finally:
+        conn.close()
+
+@app.get("/admin")
+def serve_admin():
+    return FileResponse(os.path.join(BASE_DIR, 'admin.html'))
+
+@app.get("/")
+def serve_index():
+    return FileResponse(os.path.join(BASE_DIR, 'index.html'))
+
+for static_dir in ['css', 'js', 'img', 'fonts', 'vendor']:
+    full_path = os.path.join(BASE_DIR, static_dir)
+    if os.path.exists(full_path):
+        app.mount(f"/{static_dir}", StaticFiles(directory=full_path), name=static_dir)
+
+if __name__ == '__main__':
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8080)
+</file>
+
 <file path="admin.html">
 <!doctype html>
 <html lang="es">
@@ -102,6 +648,16 @@ __pycache__/
   <title>HDP Billar · Gestión</title>
   <link rel="stylesheet" href="css/styles.css">
   <style>
+    /* Restaurar el mouse para el panel de administración */
+    *, html, body {
+      cursor: auto !important;
+    }
+    button, .btn, select, .badge, [type="button"], [type="submit"] {
+      cursor: pointer !important;
+    }
+    input[type="text"], input[type="password"], textarea {
+      cursor: text !important;
+    }
     body {
       overflow-y: auto !important;
       -webkit-user-select: auto !important;
@@ -233,7 +789,6 @@ __pycache__/
     }
     .actions { display: flex; gap: 8px; }
 
-    /* Modales */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -260,7 +815,6 @@ __pycache__/
       overflow-y: auto;
     }
 
-    /* Contenedor adaptativo sin corte inferior */
     .modal-box-split {
       display: grid;
       grid-template-columns: 1fr 340px;
@@ -315,7 +869,6 @@ __pycache__/
     }
     .form-row { display: flex; gap: 10px; }
     .form-row .form-group { flex: 1; }
-
 
     #f_ideal_custom{
       width: 100%;
@@ -1129,148 +1682,352 @@ __pycache__/
 </html>
 </file>
 
-<file path="index.html">
-<!doctype html>
-    <html lang="es">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-        <meta name="theme-color" content="#0a0a0c">
-        <meta name="color-scheme" content="dark">
-        <title>HDP Billar · Identifica tu taco</title>
-        <link rel="shortcut icon" href="/img/logo.webp" type="image/x-icon">
-        <link rel="stylesheet" href="css/styles.css">
-    </head>
-    <body>
-        <div id="root"></div>
+<file path="js/db.js">
+const DB = (function () {
+  const LOCAL_CACHE_KEY = 'HDP_CATALOGO_CACHE';
 
-        <noscript>Se necesita JavaScript para el lector NFC.</noscript>
+  const FALLBACK = {
+    numero: '??',
+    sensacion: 'NO IDENTIFICADO',
+    cat_nombre: 'DESCONOCIDO',
+    color: '#90949d',
+    peso: 3,
+    agilidad: 3,
+    golpe: 'No registrado',
+    sensacion_texto: 'Consultar en mostrador',
+    tag: 'Taco no registrado',
+    descripcion: 'Este taco aún no ha sido dado de alta en la base de datos.',
+    ideal: 'Acércalo al personal para configurarlo.'
+  };
 
-        <script src="vendor/react.production.min.js"></script>
-        <script src="vendor/react-dom.production.min.js"></script>
-        <script src="js/config.js"></script>
-        <script src="js/db.js"></script>
-        <script src="js/app.js"></script>
-    </body>
-</html>
+  let catalogo = {
+    categorias: [],
+    tacos: []
+  };
+
+  // Cargar de memoria local al iniciar para respuesta inmediata sin lag
+  try {
+    const raw = localStorage.getItem(LOCAL_CACHE_KEY);
+    if (raw) catalogo = JSON.parse(raw);
+  } catch (e) {}
+
+  async function sync() {
+    const baseUrl = CONFIG.LOCAL_API_URL || window.location.origin;
+
+    // 1. PRIORIDAD: Sincronizar con el SQLite local de la propia Pi
+    try {
+      const resLocal = await fetch(baseUrl + '/api/sync');
+      if (resLocal.ok) {
+        catalogo = await resLocal.json();
+        localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(catalogo));
+        console.log('[DB Local] Sincronización exitosa con SQLite. Tacos cargados:', catalogo.tacos.length);
+      }
+    } catch (err) {
+      console.warn('[DB Local] Servidor local no respondió, usando datos en caché.');
+    }
+
+    // 2. SEGUNDO PLANO: Sincronizar con Railway (si está configurado y activo)
+    if (CONFIG.REMOTE_API_URL && CONFIG.REMOTE_API_URL.startsWith('http')) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500); // 3.5s timeout max
+        const resRemote = await fetch(CONFIG.REMOTE_API_URL + '/api/sync', { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (resRemote.ok) {
+          const remoteData = await resRemote.json();
+          if (remoteData && remoteData.tacos && remoteData.tacos.length > 0) {
+            catalogo = remoteData;
+            localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(catalogo));
+            console.log('[DB Nube] Sincronización exitosa con Railway.');
+          }
+        }
+      } catch (err) {
+        console.log('[DB Nube] Railway no disponible. Operando 100% offline con la base local.');
+      }
+    }
+  }
+
+  // Sincronización inicial y bucle periódico
+  sync();
+  setInterval(sync, CONFIG.SYNC_INTERVAL_MS);
+
+  async function getCue(nfcUidOrNumero) {
+    const raw = String(nfcUidOrNumero || '').trim();
+    // Limpieza de UID: convierte a minúsculas y elimina separadores como ':', '-' o espacios
+    const cleanCode = raw.replace(/[^0-9a-fA-F]/g, '').toLowerCase();
+    const cleanNum = raw.replace(/[^0-9]/g, '');
+
+    // 1. Buscar en la copia local en memoria (ultra rápido: 1-2 ms)
+    const local = catalogo.tacos.find(t => {
+      const tUid = String(t.nfc_uid || '').replace(/[^0-9a-fA-F]/g, '').toLowerCase();
+      const tNum = String(t.numero || '').replace(/[^0-9]/g, '');
+      return (cleanCode && tUid === cleanCode) || 
+             (cleanNum && tNum === cleanNum) || 
+             (String(t.numero).toLowerCase() === raw.toLowerCase());
+    });
+
+    if (local) {
+      return formatTaco(local);
+    }
+
+    // 2. Si no estaba en memoria (ej. se añadió hace segundos), consultar al servidor local
+    try {
+      const res = await fetch((CONFIG.LOCAL_API_URL || window.location.origin) + '/api/taco/' + encodeURIComponent(cleanCode || raw));
+      if (res.ok) {
+        const remote = await res.json();
+        return remote;
+      }
+    } catch (e) {}
+
+    // 3. Si no existe en el sistema
+    return {
+      ...FALLBACK,
+      numero: cleanNum || (cleanCode ? cleanCode.slice(-4) : '??')
+    };
+  }
+
+  function formatTaco(t) {
+    return {
+      numero: t.numero,
+      sensacion: t.cat_nombre,
+      color: t.cat_color,
+      peso: t.peso,
+      agilidad: t.agilidad,
+      golpe: t.golpe,
+      sensacion_texto: t.sensacion_texto,
+      tag: t.cat_tagline,
+      descripcion: t.descripcion_custom || t.descripcion_default,
+      ideal: t.ideal_custom || t.ideal_default,
+      es_estandar: t.es_estandar,
+      categoria_id: t.categoria_id
+    };
+  }
+
+  function getCategorias() {
+    return catalogo.categorias;
+  }
+
+  return { getCue, getCategorias, sync, principal: () => FALLBACK };
+})();
 </file>
 
-<file path="Procfile">
-web: uvicorn server.server:app --host 0.0.0.0 --port ${PORT:-8080}
+<file path="js/config.js">
+const CONFIG = {
+  LOCAL_API_URL: window.location.origin,
+  REMOTE_API_URL: "",
+  READ_MS: 1200, // 1.2 segundos serenos
+  STANDBY_MS: 3 * 60 * 1000,
+  SYNC_INTERVAL_MS: 2 * 60 * 1000
+};
 </file>
 
-<file path="README.md">
-# Billar NFC — Identificación de tacos
+<file path="js/app.js">
+(function () {
+  const { useState, useEffect, useRef, useCallback } = React;
+  const h = React.createElement;
 
-Pantalla vertical 9:16 para Raspberry Pi Zero 2W. Lee la etiqueta NFC del taco,
-consulta su información en una BBDD SQLite local y la muestra.
+  const Logo = () => h('img', { src: 'img/logo.webp', alt: 'HDP Billar 1985', className: 'logo' });
 
-## Estructura
-    billar-nfc/
-    ├── index.html
-    ├── css/styles.css
-    ├── vendor/            
-    ├── js/
-    │   ├── config.js      ← tiempos 
-    │   ├── db.js          ← cliente HTTP hacia el servidor local
-    │   └── app.js         ← interfaz
-    ├── server/
-    │   └── server.py     
-    ├── db/
-    │   ├── schema.sql     ← tabla + datos de ejemplo
-    │   └── tacos.db      
-    └── README.md
+  const NFC = () => h('svg', { className: 'nfc', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', 'aria-hidden': 'true' },
+    h('circle', { cx: 6.2, cy: 12, r: 1.2, fill: 'currentColor', stroke: 'none' }),
+    h('path', { d: 'M10 8.8a5.2 5.2 0 0 1 0 6.4' }),
+    h('path', { d: 'M13.6 6.2a9.4 9.4 0 0 1 0 11.6' })
+  );
 
-## Probar rápido
-    cd Projects/billar-nfc/
-    python3 server/server.py
+  const Placa = () => h('div', { className: 'placa' },
+    h(Logo),
+    h('div', { className: 'tagline' }, 'THE GOOD PLACE OF BILLIARDS'),
+    h('div', { className: 'plabel' }, 'IDENTIFICADOR')
+  );
 
+  const Dots = ({ v, color }) => h('div', { className: 'dots' },
+    [1, 2, 3, 4, 5].map(i => h('span', { 
+      key: i, 
+      className: 'dot' + (i <= v ? ' on' : ''),
+      style: (i <= v && color) ? { background: color } : {}
+    }))
+  );
 
-## INICIAR KIOSK
+  const Home = () => h('div', { className: 'screen home' },
+    h(Placa),
+    h('div', { className: 'kicker' }, 'HDP BILLAR · IDENTIFICADOR'),
+    h('h1', { className: 'screen-title' }, 'Elige tu sensación'),
+    h('p', { className: 'screen-sub' }, 'Cada taco tiene su carácter. Acercá el que tengas al lector para ver sus detalles.'),
+    h('div', { className: 'sens-list' }, 
+      [
+        { id: 'LIGHT', name: 'LIGHT', color: 'var(--green)', tag: 'Ligero · Ágil · Suave' },
+        { id: 'BALANCED', name: 'BALANCED', color: 'var(--hdp)', tag: 'Equilibrado · Estable · Versátil' },
+        { id: 'POWER', name: 'POWER', color: 'var(--red)', tag: 'Sólido · Firme · Potente' }
+      ].map(k =>
+        h('div', { key: k.id, className: 'sens', style: { borderLeftColor: k.color } },
+          h('b', null, k.name),
+          h('small', null, k.tag)
+        )
+      )
+    ),
+    h('div', { className: 'scanner' },
+      h('div', { className: 'scan-title' }, 'ACERCA EL TACO'),
+      h('div', { className: 'scan-sub' }, 'al lector de abajo'),
+      h('div', { className: 'arrow-wrap' },
+        h('svg', { viewBox: '0 0 40 60', className: 'arrow', 'aria-hidden': 'true' },
+          h('line', { x1: 20, y1: 4, x2: 20, y2: 48, stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' }),
+          h('polyline', { points: '12,40 20,52 28,40', fill: 'none', stroke: 'currentColor', strokeWidth: 3, strokeLinecap: 'round', strokeLinejoin: 'round' })
+        )
+      )
+    )
+  );
 
-  ## iniciar servidor  
-    cd Projects/billar-nfc/  
-    python3 server/server.py
-    
-  ## Modo Kiosk 
-      chromium-browser --kiosk --noerrdialogs --disable-translate \
-    --force-device-scale-factor=1.4 \
-    http://localhost:8080
+  function getSuggestions(cue) {
+    if (!cue) return [];
+    const cats = DB.getCategorias();
+    const light = cats.find(c => c.id === 'LIGHT') || { nombre: 'LIGHT', color: 'var(--green)', other_text: 'Más ligero y ágil.' };
+    const balanced = cats.find(c => c.id === 'BALANCED') || { nombre: 'BALANCED', color: 'var(--hdp)', other_text: 'Equilibrado y versátil.' };
+    const power = cats.find(c => c.id === 'POWER') || { nombre: 'POWER', color: 'var(--red)', other_text: 'Más sólido y potente.' };
 
-La primera vez imprime `[DB] creada en .../db/tacos.db` (crea la base sola).
-Abrí en el navegador: **http://localhost:8080** (NO usar Live Server de VS Code
-para esto, porque no ejecuta la API).
+    if (cue.es_estandar) {
+      if (cue.categoria_id === 'LIGHT') return [balanced, power];
+      if (cue.categoria_id === 'BALANCED') return [light, power];
+      return [light, balanced];
+    }
 
-El botón **"↻ Simular lectura"** trae un taco al azar de la base.
+    const peso = cue.peso || 3;
+    const agilidad = cue.agilidad || 3;
+    const pesadez = ((peso + (6 - agilidad) - 2) / 8) * 100;
 
-## Cargar / editar tacos
-Los tacos viven en SQLite (`db/tacos.db`). Los podés administrar con:
-    sqlite3 db/tacos.db
+    if (pesadez > 70) return [light, balanced];
+    if (pesadez >= 40) return [light, power];
+    return [balanced, power];
+  }
 
-Algunos comandos útiles:
-    .tables
-    SELECT serie, marca, modelo FROM tacos;
-    INSERT INTO tacos (serie, marca, modelo, estado) VALUES ('NUEVA-SERIE', 'MARCA', 'MODELO', 'EXCELENTE');
-    .quit
+  const Detail = ({ cue }) => {
+    const cueData = cue || DB.principal();
+    const suggestions = getSuggestions(cueData);
+    const cueColor = cueData.color || 'var(--hdp)';
 
-Si querés reiniciar todo: borrá `db/tacos.db` y volvé a correr el servidor,
-que vuelve a crear la base con los datos de `db/schema.sql`.
+    return h('div', { className: 'screen detail' },
+      h(Placa),
+      h('div', { className: 'kicker' }, 'TACO ' + cueData.numero),
+      h('div', { className: 'type-pill', style: { borderColor: cueColor, color: cueColor } }, cueData.sensacion),
+      h('div', { className: 'type-tag' }, cueData.tag),
+      h('p', { className: 'desc' }, cueData.descripcion),
+      h('div', { className: 'stats' },
+        h('div', { className: 'srow' },
+          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'PESO'), h(Dots, { v: cueData.peso, color: cueColor })),
+          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'AGILIDAD'), h(Dots, { v: cueData.agilidad, color: cueColor }))
+        ),
+        h('div', { className: 'srow' },
+          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'GOLPE'), h('div', { className: 'val' }, cueData.golpe)),
+          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'SENSACIÓN'), h('div', { className: 'val' }, cueData.sensacion_texto))
+        ),
+        h('div', { className: 'scell full' }, h('div', { className: 'lab' }, 'IDEAL PARA'), h('div', { className: 'val soft' }, cueData.ideal))
+      ),
+      h('div', { className: 'divider' }),
+      h('div', { className: 'other-title' }, '¿Buscas otra sensación?'),
+      h('div', { className: 'sens-grid' }, suggestions.map(s =>
+        h('div', { key: s.id || s.nombre, className: 'sens', style: { borderLeftColor: s.color } },
+          h('b', null, h('span', { className: 'odot', style: { background: s.color } }), s.nombre),
+          h('small', null, s.other_text || s.descripcion_default)
+        )
+      )),
+      h('div', { className: 'divider' }),
+      h('p', { className: 'hint' }, '¿No sabés cuál elegir? Empezá por ', h('b', null, 'BALANCED'), '.'),
+      h('div', { className: 'foot' }, 'HDP BILLAR · EST. 1985')
+    );
+  };
 
-## Lector NFC real
-La página expone `window.NFC_SCAN('SERIE')`. Dos formas de conectarlo:
+  const Reading = () => h('div', { className: 'screen reading' },
+    h(Placa),
+    h('div', { className: 'ringwrap' },
+      h('svg', { className: 'ring-svg', viewBox: '0 0 50 50' },
+        h('circle', { className: 'ring-track', cx: 25, cy: 25, r: 20, fill: 'none', strokeWidth: 2 }),
+        h('path', { className: 'ring-blade', d: 'M 25 5 A 20 20 0 0 1 45 25', fill: 'none', strokeWidth: 2, strokeLinecap: 'round' })
+      ),
+      h(NFC)
+    ),
+    h('p', { className: 'reading-txt' }, 'Leyendo taco…')
+  );
 
-- **Lector USB tipo teclado** (la mayoría de los lectores NFC baratos):
-  el lector escribe la serie + Enter, y la app lo captura sola. No hay que
-  configurar nada. Para probarlo tipear `PRV-12.9-00427` + Enter en el teclado.
+  function App() {
+    const [view, setView] = useState('home');
+    const [cue, setCue] = useState(null);
+    const [standby, setStandby] = useState(false);
+    const idleRef = useRef(null);
+    const runId = useRef(0);
 
-- **Lector GPIO** (PN532, RC522, etc.): un script en Python lee la tarjeta
-  y hace `requests.get('http://localhost:8080/api/taco/...')` o usa `xdotool`
-  para inyectar la serie como teclado. El punto de entrada siempre termina en
-  `NFC_SCAN(serie)`.
+    const resetIdle = useCallback(() => {
+      setStandby(false);
+      clearTimeout(idleRef.current);
+      idleRef.current = setTimeout(() => {
+        setView('home');
+        setCue(null);
+      }, CONFIG.STANDBY_MS);
+    }, []);
 
-## Kiosk en Pi Zero 2W
+    const scan = useCallback(nfcCode => {
+      const id = ++runId.current;
+      setView('reading');
 
-1. Instalar dependencias:
-       sudo apt install chromium-browser unclutter
+      Promise.all([
+        DB.getCue(nfcCode),
+        new Promise(r => setTimeout(r, CONFIG.READ_MS))
+      ]).then(([foundCue]) => {
+        if (id === runId.current) {
+          setCue(foundCue);
+          setView('detail');
+        }
+      }).catch(() => {
+        if (id === runId.current) setView('home');
+      }).finally(resetIdle);
+    }, [resetIdle]);
 
-2. Copiar la carpeta `billar-nfc/` a la Pi.
+    useEffect(() => {
+      window.NFC_SCAN = nfcCode => scan(nfcCode);
+      return () => { window.NFC_SCAN = null; clearTimeout(idleRef.current); };
+    }, [scan]);
 
-3. Probar que todo arranca bien:
-       cd /home/pi/billar-nfc
-       python3 server/server.py
-       Abrir `http://localhost:8080` en Chromium y verificá que se vea.
+    useEffect(() => {
+      let buffer = '';
+      let timer = null;
 
-4. Autostart (arranca con la Pi sin necesidad de login). Creá el archivo:
-       nano ~/.config/lxsession/LXDE-pi/autostart
+      const onKey = e => {
+        clearTimeout(timer);
+        
+        if (e.key === 'Enter') {
+          resetIdle();
+          const clean = buffer.trim();
+          if (clean.length >= 2) {
+            scan(clean);
+          }
+          buffer = '';
+          return;
+        }
 
-   Con este contenido:
+        if (e.key.length === 1 && buffer.length < 50) {
+          buffer += e.key;
+        }
 
-       @xset s off
-       @xset -dpms
-       @xset s noblank
-       @unclutter -idle 0
-       @/usr/bin/python3 /home/pi/billar-nfc/server/server.py
-       @sleep 2
-       @chromium-browser --kiosk --noerrdialogs --disable-pinch \
-           --disable-restore-session-state --disable-infobars \
-           http://localhost:8080
+        timer = setTimeout(() => {
+          buffer = '';
+        }, 700);
+      };
 
+      window.addEventListener('keydown', onKey);
+      return () => window.removeEventListener('keydown', onKey);
+    }, [resetIdle, scan]);
 
-## Comportamiento
-- **Lectura**: anillo ~0.8 s → tarjeta con filas que aparecen escalonadas.
-- **Botón "↻ Simular lectura"**: trae otro taco al azar de SQLite.
-- **Animaciones ambiente**: corren ~2 min y quedan quietas.
-- **Standby**: 5 min sin actividad → funde a negro; cualquier toque, tecla
-  o lectura la despierta.
-- **Offline**: si por alguna razón el servidor no responde, la pantalla usa
-  un dato de respaldo.
-</file>
+    return h('div', { className: 'stage' + (standby ? ' standby' : '') },
+      h('div', { className: 'frame' },
+        view === 'home' && h(Home),
+        view === 'reading' && h(Reading),
+        view === 'detail' && h(Detail, { cue: cue })
+      ),
+      h('div', { className: 'sleep' })
+    );
+  }
 
-<file path="requirements.txt">
-fastapi>=0.110.0
-uvicorn[standard]>=0.28.0
-pydantic>=2.0.0
-python-multipart>=0.0.9
+  ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+})();
 </file>
 
 <file path="css/styles.css">
@@ -1309,17 +2066,17 @@ python-multipart>=0.0.9
   box-sizing: border-box;
 }
 
-#btnSubmitTaco{
+#btnSubmitTaco {
   width: 100%;
   justify-content: center;
 }
 
-#c_ideal{
+#c_ideal {
   width: 100%;
 }
 
-#btnSaveCat{
-    width: 100%;
+#btnSaveCat {
+  width: 100%;
 }
 
 html, body, #root {
@@ -1328,8 +2085,7 @@ html, body, #root {
 }
 
 body {
-  background-color: #050608;
-  background-image: linear-gradient(180deg, #161512 0%, #08090b 40%, #030304 100%);
+  background-color: #060709;
   color: var(--text);
   font-family: var(--f-body);
   -webkit-font-smoothing: antialiased;
@@ -1348,24 +2104,20 @@ body {
   background-color: #020203;
 }
 
-/* El marco ocupa el alto de la pantalla y mantiene la proporción 9:16 vertical */
+/* Medidas dinámicas 9:16 intactas */
 .frame {
   height: 100vh;
   height: 100dvh;
   width: min(100vw, calc(100dvh * (9 / 16)));
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   position: relative;
-  background-color: #050608;
-  background-image: linear-gradient(180deg, #161512 0%, #08090b 40%, #030304 100%);
+  overflow: hidden;
+  background-color: #08090b;
 }
 
+/* La pantalla activa se muestra normal */
 .screen {
   width: 100%;
   height: 100%;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1373,15 +2125,6 @@ body {
   padding: 2.6vh 2.5vh;
 }
 
-.screen.home {
-  justify-content: space-between;
-}
-
-.screen.detail {
-  justify-content: space-between;
-}
-
-/* ============ placa superior ============ */
 .placa {
   position: relative;
   width: 94%;
@@ -1391,7 +2134,6 @@ body {
   padding: 2vh 1.8vh;
   text-align: center;
   flex: none;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
 }
 
 .placa::before, .placa::after {
@@ -1432,7 +2174,6 @@ body {
   margin: 0 auto;
 }
 
-/* ============ textos ============ */
 .kicker {
   font-family: var(--f-pixel);
   font-size: 1.5vh;
@@ -1530,11 +2271,10 @@ body {
 }
 
 @keyframes bob {
-  0%, 100% { transform: translateY(0); opacity: .6; }
-  50% { transform: translateY(8px); opacity: 1; }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
 }
 
-/* ============ pantalla detalle ============ */
 .type-pill {
   display: inline-block;
   margin-top: 0.8vh;
@@ -1678,35 +2418,51 @@ body {
   flex: none;
 }
 
-/* ============ lectura ============ */
 .reading { justify-content: center; }
+
 .ringwrap {
   margin-top: 2.5vh;
   position: relative;
-  width: 8vh;
-  height: 8vh;
+  width: 8.5vh;
+  height: 8.5vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .nfc {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 5vh;
-  height: 5vh;
+  width: 4.8vh;
+  height: 4.8vh;
   transform: translate(-50%, -50%);
   color: var(--hdp);
+  z-index: 2;
 }
 
-.ring {
+/* Rueda delgada y fina */
+.ring-svg {
   position: absolute;
   inset: 0;
-  border-radius: 50%;
-  border: 4px solid rgba(240, 201, 40, .2);
-  border-top-color: var(--hdp);
-  animation: spin 1s linear infinite;
+  width: 100%;
+  height: 100%;
+  animation: spinRing 1s linear infinite;
+  transform-origin: 50% 50%;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+.ring-track {
+  stroke: rgba(240, 201, 40, 0.2);
+}
+
+.ring-blade {
+  stroke: var(--hdp);
+}
+
+@keyframes spinRing {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
 .reading-txt {
   margin-top: 1.8vh;
@@ -1720,725 +2476,11 @@ body {
   inset: 0;
   z-index: 50;
   background: #000;
-  opacity: 0;
+  display: none;
   pointer-events: none;
-  transition: opacity 1.5s ease;
 }
 
-.standby .sleep { opacity: 1; }
-</file>
-
-<file path="db/schema.sql">
-PRAGMA journal_mode = WAL;
-PRAGMA busy_timeout = 30000;
-
-CREATE TABLE IF NOT EXISTS categorias (
-  id TEXT PRIMARY KEY,
-  nombre TEXT NOT NULL,
-  color TEXT NOT NULL,
-  tagline TEXT NOT NULL,
-  descripcion_default TEXT NOT NULL,
-  ideal_default TEXT NOT NULL,
-  other_text TEXT NOT NULL,
-  peso_default INTEGER DEFAULT 3,
-  agilidad_default INTEGER DEFAULT 3,
-  golpe_default TEXT DEFAULT 'Equilibrado',
-  sensacion_texto_default TEXT DEFAULT 'Natural y estable',
-  es_estandar INTEGER DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS tacos (
-  nfc_uid TEXT PRIMARY KEY,
-  numero TEXT UNIQUE NOT NULL,
-  categoria_id TEXT NOT NULL,
-  peso INTEGER NOT NULL DEFAULT 3,
-  agilidad INTEGER NOT NULL DEFAULT 3,
-  golpe TEXT DEFAULT 'Equilibrado',
-  sensacion_texto TEXT DEFAULT 'Natural y estable',
-  descripcion_custom TEXT,
-  ideal_custom TEXT,
-  actualizado_en TEXT DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (categoria_id) REFERENCES categorias(id)
-);
-
-CREATE TABLE IF NOT EXISTS usuarios (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  username TEXT UNIQUE NOT NULL,
-  password TEXT NOT NULL,
-  rol TEXT NOT NULL DEFAULT 'staff',
-  perm_crear INTEGER DEFAULT 1,
-  perm_editar INTEGER DEFAULT 1,
-  perm_eliminar INTEGER DEFAULT 0,
-  perm_categorias INTEGER DEFAULT 0
-);
-
-INSERT OR IGNORE INTO usuarios (username, password, rol, perm_crear, perm_editar, perm_eliminar, perm_categorias)
-VALUES ('admin', 'hdp1985', 'admin', 1, 1, 1, 1);
-
-INSERT OR IGNORE INTO categorias (id, nombre, color, tagline, descripcion_default, ideal_default, other_text, peso_default, agilidad_default, golpe_default, sensacion_texto_default, es_estandar) VALUES
-  ('LIGHT', 'LIGHT', '#37d67a', 'Ligero · Ágil · Suave', 'Un taco ligero y ágil, con una sensación de golpe más suave. Fácil de mover y rápido en el toque.', 'Jugadores que buscan rapidez, control fino y un golpe suave.', 'Más ligero y ágil, con una sensación de golpe más suave. Buscá los tacos con la pegatina verde.', 2, 4, 'Suave', 'Ágil y controlada', 1),
-  ('BALANCED', 'BALANCED', '#f0c928', 'Equilibrado · Estable · Versátil', 'Un taco con una sensación equilibrada entre ligereza y solidez. Fácil de controlar y cómodo para diferentes estilos de juego.', 'Jugadores que buscan un taco cómodo y versátil, sin irse a ninguno de los extremos.', 'Equilibrado y versátil, cómodo para cualquier estilo. Buscá los tacos con la pegatina amarilla.', 3, 3, 'Equilibrado', 'Natural y estable', 1),
-  ('POWER', 'POWER', '#f65b5b', 'Sólido · Firme · Potente', 'Un taco sólido y firme, con mayor sensación de peso y contundencia en el golpe.', 'Jugadores que buscan potencia, firmeza y contundencia.', 'Más sólido y firme, con mayor sensación de peso y contundencia en el golpe. Buscá los tacos con la pegatina roja.', 5, 2, 'Contundente', 'Sólida y firme', 1);
-
-INSERT OR IGNORE INTO tacos (nfc_uid, numero, categoria_id, peso, agilidad, golpe, sensacion_texto, descripcion_custom, ideal_custom) VALUES
-  ('812acd7cf5aa04', '07', 'BALANCED', 3, 4, 'Equilibrado', 'Natural y estable', NULL, NULL),
-  ('00000039ddab7c', '05', 'LIGHT', 2, 4, 'Suave', 'Ágil y controlada', NULL, NULL),
-  ('00000039c250ec', '12', 'POWER', 5, 2, 'Contundente', 'Sólida y firme', NULL, NULL),
-  ('81268da9f39704', '01', 'LIGHT', 2, 5, 'Suave', 'Ligera y rápida', NULL, NULL),
-  ('81268da9f39804', '02', 'LIGHT', 2, 4, 'Suave', 'Fácil control', NULL, NULL),
-  ('81268da9f39a04', '03', 'BALANCED', 3, 3, 'Equilibrado', 'Natural y estable', NULL, NULL),
-  ('81268da9f3a304', '04', 'BALANCED', 4, 3, 'Equilibrado', 'Estable y firme', NULL, NULL),
-  ('81268da9f3aa04', '10', 'POWER', 5, 1, 'Contundente', 'Pesada y potente', NULL, NULL);
-</file>
-
-<file path="js/app.js">
-(function () {
-  const { useState, useEffect, useRef, useCallback } = React;
-  const h = React.createElement;
-
-  const Logo = () => h('img', { src: 'img/logo.webp', alt: 'HDP Billar 1985', className: 'logo' });
-
-  const NFC = () => h('svg', { className: 'nfc', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', 'aria-hidden': 'true' },
-    h('circle', { cx: 6.2, cy: 12, r: 1.2, fill: 'currentColor', stroke: 'none' }),
-    h('path', { d: 'M10 8.8a5.2 5.2 0 0 1 0 6.4' }),
-    h('path', { d: 'M13.6 6.2a9.4 9.4 0 0 1 0 11.6' })
-  );
-
-  const Placa = () => h('div', { className: 'placa' },
-    h(Logo),
-    h('div', { className: 'tagline' }, 'THE GOOD PLACE OF BILLIARDS'),
-    h('div', { className: 'plabel' }, 'IDENTIFICADOR')
-  );
-
-  const Dots = ({ v, color }) => h('div', { className: 'dots' },
-    [1, 2, 3, 4, 5].map(i => h('span', { 
-      key: i, 
-      className: 'dot' + (i <= v ? ' on' : ''),
-      style: (i <= v && color) ? { background: color } : {}
-    }))
-  );
-
-  const Home = () => h('div', { className: 'screen home' },
-    h(Placa),
-    h('div', { className: 'kicker' }, 'HDP BILLAR · IDENTIFICADOR'),
-    h('h1', { className: 'screen-title' }, 'Elige tu sensación'),
-    h('p', { className: 'screen-sub' }, 'Cada taco tiene su carácter. Acercá el que tengas al lector para ver sus detalles.'),
-    h('div', { className: 'sens-list' }, 
-      [
-        { id: 'LIGHT', name: 'LIGHT', color: 'var(--green)', tag: 'Ligero · Ágil · Suave' },
-        { id: 'BALANCED', name: 'BALANCED', color: 'var(--hdp)', tag: 'Equilibrado · Estable · Versátil' },
-        { id: 'POWER', name: 'POWER', color: 'var(--red)', tag: 'Sólido · Firme · Potente' }
-      ].map(k =>
-        h('div', { key: k.id, className: 'sens', style: { borderLeftColor: k.color } },
-          h('b', null, k.name),
-          h('small', null, k.tag)
-        )
-      )
-    ),
-    h('div', { className: 'scanner' },
-      h('div', { className: 'scan-title' }, 'ACERCA EL TACO'),
-      h('div', { className: 'scan-sub' }, 'al lector de abajo'),
-      h('div', { className: 'arrow-wrap' },
-        h('svg', { viewBox: '0 0 40 60', className: 'arrow', 'aria-hidden': 'true' },
-          h('line', { x1: 20, y1: 4, x2: 20, y2: 48, stroke: 'currentColor', strokeWidth: 2.5, strokeLinecap: 'round' }),
-          h('polyline', { points: '12,40 20,52 28,40', fill: 'none', stroke: 'currentColor', strokeWidth: 3, strokeLinecap: 'round', strokeLinejoin: 'round' })
-        )
-      )
-    )
-  );
-
-  // --- Algoritmo de Sugerencias con la fórmula física ---
-  function getSuggestions(cue) {
-    const cats = DB.getCategorias();
-    const light = cats.find(c => c.id === 'LIGHT') || { nombre: 'LIGHT', color: 'var(--green)', other_text: 'Más ligero y ágil.' };
-    const balanced = cats.find(c => c.id === 'BALANCED') || { nombre: 'BALANCED', color: 'var(--hdp)', other_text: 'Equilibrado y versátil.' };
-    const power = cats.find(c => c.id === 'POWER') || { nombre: 'POWER', color: 'var(--red)', other_text: 'Más sólido y potente.' };
-
-    if (cue.es_estandar) {
-      if (cue.categoria_id === 'LIGHT') return [balanced, power];
-      if (cue.categoria_id === 'BALANCED') return [light, power];
-      return [light, balanced];
-    }
-
-    // Fórmula para tacos personalizados: (Peso + (6 - Agilidad) - 2) / 8 * 100
-    const peso = cue.peso || 3;
-    const agilidad = cue.agilidad || 3;
-    const pesadez = ((peso + (6 - agilidad) - 2) / 8) * 100;
-
-    if (pesadez > 70) return [light, balanced];
-    if (pesadez >= 40) return [light, power];
-    return [balanced, power];
-  }
-
-  const Detail = ({ cue }) => {
-    const suggestions = getSuggestions(cue);
-    const cueColor = cue.color || 'var(--hdp)';
-
-    return h('div', { className: 'screen detail' },
-      h(Placa),
-      h('div', { className: 'kicker' }, 'TACO ' + cue.numero),
-      h('div', { className: 'type-pill', style: { borderColor: cueColor, color: cueColor } }, cue.sensacion),
-      h('div', { className: 'type-tag' }, cue.tag),
-      h('p', { className: 'desc' }, cue.descripcion),
-      h('div', { className: 'stats' },
-        h('div', { className: 'srow' },
-          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'PESO'), h(Dots, { v: cue.peso, color: cueColor })),
-          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'AGILIDAD'), h(Dots, { v: cue.agilidad, color: cueColor }))
-        ),
-        h('div', { className: 'srow' },
-          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'GOLPE'), h('div', { className: 'val' }, cue.golpe)),
-          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'SENSACIÓN'), h('div', { className: 'val' }, cue.sensacion_texto))
-        ),
-        h('div', { className: 'scell full' }, h('div', { className: 'lab' }, 'IDEAL PARA'), h('div', { className: 'val soft' }, cue.ideal))
-      ),
-      h('div', { className: 'divider' }),
-      h('div', { className: 'other-title' }, '¿Buscas otra sensación?'),
-      h('div', { className: 'sens-grid' }, suggestions.map(s =>
-        h('div', { key: s.id || s.nombre, className: 'sens', style: { borderLeftColor: s.color } },
-          h('b', null, h('span', { className: 'odot', style: { background: s.color } }), s.nombre),
-          h('small', null, s.other_text || s.descripcion_default)
-        )
-      )),
-      h('div', { className: 'divider' }),
-      h('p', { className: 'hint' }, '¿No sabés cuál elegir? Empezá por ', h('b', null, 'BALANCED'), '.'),
-      h('div', { className: 'foot' }, 'HDP BILLAR · EST. 1985')
-    );
-  };
-
-  const Reading = () => h('div', { className: 'screen reading' },
-    h(Placa),
-    h('div', { className: 'ringwrap' }, h('span', { className: 'ring' }), h(NFC)),
-    h('p', { className: 'reading-txt' }, 'Leyendo taco…')
-  );
-
-  function App() {
-    const [view, setView] = useState('home');
-    const [cue, setCue] = useState(null);
-    const [standby, setStandby] = useState(false);
-    const idleRef = useRef(null);
-    const runId = useRef(0);
-
-    const resetIdle = useCallback(() => {
-      setStandby(false);
-      clearTimeout(idleRef.current);
-      idleRef.current = setTimeout(() => {
-        setView('home');
-        setCue(null);
-      }, CONFIG.STANDBY_MS);
-    }, []);
-
-    const scan = useCallback(nfcCode => {
-      const id = ++runId.current;
-      setView('reading');
-      
-      const espera = new Promise(r => setTimeout(r, CONFIG.READ_MS));
-      Promise.all([DB.getCue(nfcCode), espera])
-        .then(([c]) => { 
-          if (id === runId.current) { 
-            setCue(c); 
-            setView('detail'); 
-          } 
-        })
-        .catch(() => { 
-          if (id === runId.current) setView('home'); 
-        })
-        .finally(resetIdle);
-    }, [resetIdle]);
-
-    useEffect(() => {
-      window.NFC_SCAN = nfcCode => scan(nfcCode);
-      return () => { window.NFC_SCAN = null; clearTimeout(idleRef.current); };
-    }, [scan]);
-
-    // Listener de teclado con protección contra buffer sucio (auto-limpieza por timeout)
-    useEffect(() => {
-      let buffer = '';
-      let timer = null;
-
-      const onKey = e => {
-        clearTimeout(timer);
-        
-        if (e.key === 'Enter') {
-          resetIdle();
-          if (buffer.length >= 2) {
-            scan(buffer);
-          }
-          buffer = '';
-          return;
-        }
-
-        if (e.key.length === 1 && buffer.length < 50) {
-          buffer += e.key;
-        }
-
-        // Si pasan más de 400ms sin teclas nuevas, limpia el buffer para evitar teclas accidentales
-        timer = setTimeout(() => {
-          buffer = '';
-        }, 400);
-      };
-
-      window.addEventListener('keydown', onKey);
-      return () => window.removeEventListener('keydown', onKey);
-    }, [resetIdle, scan]);
-
-    return h('div', { className: 'stage' + (standby ? ' standby' : '') },
-      h('div', { className: 'frame' },
-        view === 'home' ? h(Home) : (view === 'detail' && cue ? h(Detail, { cue }) : h(Reading))
-      ),
-      h('div', { className: 'sleep' })
-    );
-  }
-
-  ReactDOM.createRoot(document.getElementById('root')).render(h(App));
-})();
-</file>
-
-<file path="js/config.js">
-const CONFIG = {
-  // En producción en las Raspberries apunta a tu app de Railway
-  // Reemplaza 'tu-app.up.railway.app' con tu URL real cuando la despliegues
-  API_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'https://tu-app.up.railway.app'
-    : window.location.origin,
-  
-  READ_MS: 700,
-  STANDBY_MS: 3 * 60 * 1000,
-  SYNC_INTERVAL_MS: 2 * 60 * 1000
-};
-</file>
-
-<file path="js/db.js">
-const DB = (function () {
-  const LOCAL_CACHE_KEY = 'HDP_CATALOGO_CACHE';
-
-  const FALLBACK = {
-    numero: '07',
-    sensacion: 'BALANCED',
-    cat_nombre: 'BALANCED',
-    color: '#f0c928',
-    peso: 3,
-    agilidad: 4,
-    golpe: 'Equilibrado',
-    sensacion_texto: 'Natural y estable',
-    tag: 'Equilibrado · Estable · Versátil',
-    descripcion: 'Un taco con una sensación equilibrada entre ligereza y solidez.',
-    ideal: 'Jugadores que buscan versatilidad.'
-  };
-
-  let catalogo = {
-    categorias: [],
-    tacos: []
-  };
-
-  // Cargar de memoria local al iniciar para respuesta inmediata sin internet
-  try {
-    const raw = localStorage.getItem(LOCAL_CACHE_KEY);
-    if (raw) catalogo = JSON.parse(raw);
-  } catch (e) {}
-
-  async function sync() {
-    try {
-      const res = await fetch(CONFIG.API_URL + '/api/sync');
-      if (res.ok) {
-        catalogo = await res.json();
-        localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(catalogo));
-        console.log('[DB] Sincronización exitosa. Tacos en memoria:', catalogo.tacos.length);
-      }
-    } catch (err) {
-      console.warn('[DB] No se pudo sincronizar con el servidor, usando copia local');
-    }
-  }
-
-  // Sincronización al iniciar y en bucle
-  sync();
-  setInterval(sync, CONFIG.SYNC_INTERVAL_MS);
-
-  async function getCue(nfcUidOrNumero) {
-    const code = (nfcUidOrNumero || '').toLowerCase().trim();
-    
-    // 1. Buscar en la copia local (instantáneo: 2 milisegundos)
-    const local = catalogo.tacos.find(t => 
-      t.nfc_uid.toLowerCase() === code || t.numero.toLowerCase() === code
-    );
-
-    if (local) {
-      return formatTaco(local);
-    }
-
-    // 2. Si no estaba en local, consultar en tiempo real a la API (por si es nuevo)
-    try {
-      const res = await fetch(CONFIG.API_URL + '/api/taco/' + encodeURIComponent(code));
-      if (res.ok) {
-        const remote = await res.json();
-        return remote;
-      }
-    } catch (e) {}
-
-    return FALLBACK;
-  }
-
-  function formatTaco(t) {
-    return {
-      numero: t.numero,
-      sensacion: t.cat_nombre,
-      color: t.cat_color,
-      peso: t.peso,
-      agilidad: t.agilidad,
-      golpe: t.golpe,
-      sensacion_texto: t.sensacion_texto,
-      tag: t.cat_tagline,
-      descripcion: t.descripcion_custom || t.descripcion_default,
-      ideal: t.ideal_default,
-      es_estandar: t.es_estandar,
-      categoria_id: t.categoria_id
-    };
-  }
-
-  function getCategorias() {
-    return catalogo.categorias;
-  }
-
-  return { getCue, getCategorias, sync, principal: () => FALLBACK };
-})();
-</file>
-
-<file path="server/server.py">
-#!/usr/bin/env python3
-import os
-import sys
-import re
-import sqlite3
-from typing import Optional
-from fastapi import FastAPI, HTTPException, Header, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from pydantic import BaseModel, field_validator
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
-
-DB_PATH = os.path.join(BASE_DIR, 'db', 'tacos.db')
-SCHEMA_PATH = os.path.join(BASE_DIR, 'db', 'schema.sql')
-
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'hdp1985')
-STANDARD_CATS = {'LIGHT', 'BALANCED', 'POWER'}
-
-app = FastAPI(title="HDP Billar NFC API")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-def get_db():
-    conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode = WAL;")
-    conn.execute("PRAGMA busy_timeout = 30000;")
-    return conn
-
-def init_db():
-    os.makedirs(os.path.join(BASE_DIR, 'db'), exist_ok=True)
-    conn = get_db()
-    try:
-        with open(SCHEMA_PATH, 'r', encoding='utf-8') as f:
-            conn.executescript(f.read())
-        conn.commit()
-    finally:
-        conn.close()
-
-init_db()
-
-def get_next_available_number(conn):
-    rows = conn.execute("SELECT numero FROM tacos").fetchall()
-    existing = set()
-    for r in rows:
-        try:
-            existing.add(int(r["numero"]))
-        except (ValueError, TypeError):
-            pass
-    n = 1
-    while n in existing:
-        n += 1
-    return f"{n:02d}"
-
-class LoginRequest(BaseModel):
-    password: str
-
-class CategoriaModel(BaseModel):
-    id: str
-    nombre: str
-    color: str
-    tagline: str
-    descripcion_default: str
-    ideal_default: str
-    other_text: Optional[str] = None
-    peso_default: Optional[int] = 3
-    agilidad_default: Optional[int] = 3
-    golpe_default: Optional[str] = "Equilibrado"
-    sensacion_texto_default: Optional[str] = "Natural y estable"
-    es_estandar: Optional[int] = 0
-
-    @field_validator('id', 'nombre')
-    @classmethod
-    def to_upper_clean(cls, v: str):
-        cleaned = v.strip().upper()
-        if not cleaned:
-            raise ValueError('Campo obligatorio no puede estar vacío.')
-        return cleaned
-
-class TacoModel(BaseModel):
-    nfc_uid: str
-    numero: Optional[str] = None
-    categoria_id: str
-    peso: int
-    agilidad: int
-    golpe: Optional[str] = "Equilibrado"
-    sensacion_texto: Optional[str] = "Natural y estable"
-    descripcion_custom: Optional[str] = None
-    ideal_custom: Optional[str] = None
-
-    @field_validator('nfc_uid')
-    @classmethod
-    def validate_uid(cls, v: str):
-        cleaned = v.strip().lower()
-        if not re.match(r'^[0-9a-f]{4,32}$', cleaned):
-            raise ValueError('El UID debe contener entre 4 y 32 caracteres hexadecimales (0-9, a-f).')
-        return cleaned
-
-    @field_validator('numero')
-    @classmethod
-    def validate_numero(cls, v: Optional[str]):
-        if v is not None and v.strip() != "":
-            cleaned = v.strip()
-            if not re.match(r'^[0-9]{1,4}$', cleaned):
-                raise ValueError('El número debe contener exclusivamente dígitos numéricos.')
-            return cleaned
-        return None
-
-def verify_admin(x_admin_password: Optional[str] = Header(None)):
-    if not x_admin_password or x_admin_password != ADMIN_PASSWORD:
-        raise HTTPException(status_code=401, detail="No autorizado")
-    return True
-
-@app.post("/api/auth/login")
-def login(req: LoginRequest):
-    conn = get_db()
-    try:
-        user = conn.execute("SELECT * FROM usuarios WHERE password = ?", (req.password,)).fetchone()
-        if user or req.password == ADMIN_PASSWORD:
-            perms = {
-                "crear": bool(user["perm_crear"]) if user else True,
-                "editar": bool(user["perm_editar"]) if user else True,
-                "eliminar": bool(user["perm_eliminar"]) if user else True,
-                "categorias": bool(user["perm_categorias"]) if user else True,
-                "rol": user["rol"] if user else "admin"
-            }
-            return {"status": "ok", "token": req.password, "permisos": perms}
-        raise HTTPException(status_code=401, detail="Contraseña incorrecta")
-    finally:
-        conn.close()
-
-@app.get("/api/sync")
-def sync_data():
-    conn = get_db()
-    try:
-        cats = conn.execute("SELECT * FROM categorias").fetchall()
-        cues = conn.execute("""
-            SELECT t.*, c.nombre as cat_nombre, c.color as cat_color, c.tagline as cat_tagline,
-                   c.descripcion_default, c.ideal_default, c.other_text, c.es_estandar
-            FROM tacos t
-            JOIN categorias c ON t.categoria_id = c.id
-        """).fetchall()
-        return {
-            "categorias": [dict(c) for c in cats],
-            "tacos": [dict(t) for t in cues],
-            "version": os.path.getmtime(DB_PATH) if os.path.exists(DB_PATH) else 1
-        }
-    finally:
-        conn.close()
-
-@app.get("/api/tacos")
-def list_tacos():
-    conn = get_db()
-    try:
-        cues = conn.execute("""
-            SELECT t.*, c.nombre as cat_nombre, c.color as cat_color, c.es_estandar, c.ideal_default
-            FROM tacos t
-            JOIN categorias c ON t.categoria_id = c.id
-            ORDER BY CAST(t.numero AS INTEGER) ASC, t.numero ASC
-        """).fetchall()
-        return [dict(t) for t in cues]
-    finally:
-        conn.close()
-
-@app.get("/api/tacos/next-number")
-def get_next_number():
-    conn = get_db()
-    try:
-        return {"next_number": get_next_available_number(conn)}
-    finally:
-        conn.close()
-
-@app.get("/api/taco/{uid_or_numero}")
-def get_taco(uid_or_numero: str):
-    conn = get_db()
-    try:
-        cue = conn.execute("""
-            SELECT t.*, c.nombre as cat_nombre, c.color as cat_color, c.tagline as cat_tagline,
-                   c.descripcion_default, c.ideal_default, c.other_text, c.es_estandar
-            FROM tacos t
-            JOIN categorias c ON t.categoria_id = c.id
-            WHERE LOWER(t.nfc_uid) = LOWER(?) OR LOWER(t.numero) = LOWER(?)
-        """, (uid_or_numero, uid_or_numero)).fetchone()
-        if not cue:
-            raise HTTPException(status_code=404, detail="Taco no encontrado")
-        
-        item = dict(cue)
-        item["sensacion"] = item["cat_nombre"]
-        item["color"] = item["cat_color"]
-        item["descripcion"] = item["descripcion_custom"] if item["descripcion_custom"] else item["descripcion_default"]
-        item["ideal"] = item["ideal_custom"] if item["ideal_custom"] else item["ideal_default"]
-        item["tag"] = item["cat_tagline"]
-        return item
-    finally:
-        conn.close()
-
-@app.post("/api/tacos")
-def create_taco(taco: TacoModel, authorized: bool = Depends(verify_admin)):
-    conn = get_db()
-    try:
-        with conn:
-            numero = taco.numero if taco.numero else get_next_available_number(conn)
-            conn.execute("""
-                INSERT INTO tacos (nfc_uid, numero, categoria_id, peso, agilidad, golpe, sensacion_texto, descripcion_custom, ideal_custom)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                taco.nfc_uid,
-                numero,
-                taco.categoria_id,
-                taco.peso,
-                taco.agilidad,
-                taco.golpe,
-                taco.sensacion_texto,
-                taco.descripcion_custom,
-                taco.ideal_custom
-            ))
-        return {"status": "ok", "numero": numero}
-    except sqlite3.IntegrityError:
-        raise HTTPException(status_code=400, detail="El UID NFC o el Número ya están registrados.")
-    finally:
-        conn.close()
-
-@app.put("/api/tacos/{nfc_uid}")
-def update_taco(nfc_uid: str, taco: TacoModel, authorized: bool = Depends(verify_admin)):
-    conn = get_db()
-    try:
-        with conn:
-            numero = taco.numero if taco.numero else get_next_available_number(conn)
-            conn.execute("""
-                UPDATE tacos
-                SET numero = ?, categoria_id = ?, peso = ?, agilidad = ?, golpe = ?, sensacion_texto = ?, descripcion_custom = ?, ideal_custom = ?, actualizado_en = CURRENT_TIMESTAMP
-                WHERE LOWER(nfc_uid) = LOWER(?)
-            """, (
-                numero,
-                taco.categoria_id,
-                taco.peso,
-                taco.agilidad,
-                taco.golpe,
-                taco.sensacion_texto,
-                taco.descripcion_custom,
-                taco.ideal_custom,
-                nfc_uid.lower().strip()
-            ))
-        return {"status": "ok"}
-    finally:
-        conn.close()
-
-@app.delete("/api/tacos/{nfc_uid}")
-def delete_taco(nfc_uid: str, authorized: bool = Depends(verify_admin)):
-    conn = get_db()
-    try:
-        with conn:
-            conn.execute("DELETE FROM tacos WHERE LOWER(nfc_uid) = LOWER(?)", (nfc_uid.lower().strip(),))
-        return {"status": "ok"}
-    finally:
-        conn.close()
-
-@app.get("/api/categorias")
-def list_categorias():
-    conn = get_db()
-    try:
-        cats = conn.execute("SELECT * FROM categorias ORDER BY es_estandar DESC, nombre ASC").fetchall()
-        return [dict(c) for c in cats]
-    finally:
-        conn.close()
-
-@app.post("/api/categorias")
-def create_or_update_categoria(cat: CategoriaModel, authorized: bool = Depends(verify_admin)):
-    if cat.id in STANDARD_CATS:
-        raise HTTPException(status_code=400, detail="Las categorías estándar (LIGHT, BALANCED, POWER) son fijas y no se pueden modificar.")
-    
-    conn = get_db()
-    try:
-        with conn:
-            conn.execute("""
-                INSERT OR REPLACE INTO categorias (id, nombre, color, tagline, descripcion_default, ideal_default, other_text, peso_default, agilidad_default, golpe_default, sensacion_texto_default, es_estandar)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-            """, (
-                cat.id,
-                cat.nombre,
-                cat.color.strip(),
-                cat.tagline.strip(),
-                cat.descripcion_default.strip(),
-                cat.ideal_default.strip(),
-                cat.other_text.strip() if cat.other_text else cat.descripcion_default.strip(),
-                cat.peso_default or 3,
-                cat.agilidad_default or 3,
-                cat.golpe_default or "Equilibrado",
-                cat.sensacion_texto_default or "Natural y estable"
-            ))
-        return {"status": "ok"}
-    finally:
-        conn.close()
-
-@app.delete("/api/categorias/{cat_id}")
-def delete_categoria(cat_id: str, authorized: bool = Depends(verify_admin)):
-    if cat_id in STANDARD_CATS:
-        raise HTTPException(status_code=400, detail="No se pueden eliminar las categorías estándar.")
-        
-    conn = get_db()
-    try:
-        with conn:
-            usage = conn.execute("SELECT COUNT(*) FROM tacos WHERE categoria_id = ?", (cat_id,)).fetchone()[0]
-            if usage > 0:
-                raise HTTPException(status_code=400, detail="No puedes eliminar una categoría con tacos asignados.")
-            conn.execute("DELETE FROM categorias WHERE id = ? AND es_estandar = 0", (cat_id,))
-        return {"status": "ok"}
-    finally:
-        conn.close()
-
-@app.get("/admin")
-def serve_admin():
-    return FileResponse(os.path.join(BASE_DIR, 'admin.html'))
-
-@app.get("/")
-def serve_index():
-    return FileResponse(os.path.join(BASE_DIR, 'index.html'))
-
-for static_dir in ['css', 'js', 'img', 'fonts', 'vendor']:
-    full_path = os.path.join(BASE_DIR, static_dir)
-    if os.path.exists(full_path):
-        app.mount(f"/{static_dir}", StaticFiles(directory=full_path), name=static_dir)
-
-if __name__ == '__main__':
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+.standby .sleep { display: block; }
 </file>
 
 <file path="install-pi.sh">
@@ -2454,15 +2496,15 @@ D="\033[0;90m"
 NC="\033[0m"
 
 clear
-cat << "BANNER"
-  _    _   _____   _____     ____   _____   _       _                  _____  
- | |  | | |  __ \ |  __ \   |  _ \ |_   _| | |     | |        /\      |  __ \ 
- | |__| | |  | || |__) |  | |_) |  | |   | |     | |       /  \     | |__) |
- |  __  | | |  | ||  ___/   |  _ <   | |   | |     | |      / /\ \    |  _  / 
- | |  | | | |__| || |       | |_) | _| |_  | |____ | |____ / ____ \   | | \ \ 
- |_|  |_| |_____/ |_|       |____/ |_____| |______||______/_/    \_\  |_|  \_\
+cat << 'BANNER'
+  _    _ _____  _____     ____  _____ _      _               _____  
+ | |  | |  __ \|  __ \   |  _ \|_   _| |    | |        /\   |  __ \ 
+ | |__| | |  | | |__) |  | |_) | | | | |    | |       /  \  | |__) |
+ |  __  | |  | |  ___/   |  _ <  | | | |    | |      / /\ \ |  _  / 
+ | |  | | |__| | |       | |_) |_| |_| |____| |____ / ____ \| | \ \ 
+ |_|  |_|_____/|_|       |____/|_____|______|______/_/    \_\_|  \_\
 
-                               EST. 1985 · QUIOSCO NFC
+                         EST. 1985 · BILLAR NFC
 BANNER
 echo -e "${D}================================================================${NC}"
 echo -e "${Y}▶ INSTALADOR DE QUIOSCO AUTOMATIZADO${NC}"
@@ -2484,63 +2526,97 @@ run_step() {
   
   while kill -0 $pid 2>/dev/null; do
     i=$(( (i+1) % 10 ))
-    echo -ne "\r${C}[${step_num}/5]${NC} ${Y}${spin[$i]}${NC} ${W}${title}...${NC}"
+    echo -ne "\r${C}[${step_num}/7]${NC} ${Y}${spin[$i]}${NC} ${W}${title}...${NC}"
     sleep 0.1
   done
   
   wait $pid
   local exit_code=$?
   if [ $exit_code -eq 0 ]; then
-    echo -e "\r${C}[${step_num}/5]${NC} ${G}✔${NC} ${W}${title}${NC} ${G}[OK]${NC}"
+    echo -e "\r${C}[${step_num}/7]${NC} ${G}✔${NC} ${W}${title}${NC} ${G}[OK]${NC}"
   else
-    echo -e "\r${C}[${step_num}/5]${NC} ${R}✖${NC} ${W}${title}${NC} ${R}[FALLÓ]${NC}"
+    echo -e "\r${C}[${step_num}/7]${NC} ${R}✖${NC} ${W}${title}${NC} ${R}[FALLÓ]${NC}"
     echo -e "\n${R}Últimas líneas del registro de error:${NC}"
     tail -n 12 "$LOG_FILE"
     exit 1
   fi
 }
 
-run_step 1 "Actualizando repositorios APT" "sudo apt update -y"
-run_step 0 "Desactivando gestores de contraseñas del sistema" "rm -rf '$HOME/.local/share/keyrings' 2>/dev/null || true"
-run_step 2 "Instalando Chromium y Unclutter" "sudo apt install -y chromium-browser unclutter"
-run_step 3 "Creando entorno Python e instalando dependencias" "
+run_step 1 "Verificando motor gráfico Wayland" "
+  if which labwc >/dev/null 2>&1; then
+    sudo raspi-config nonint do_wayland W3 2>/dev/null || true
+  elif which wayfire >/dev/null 2>&1; then
+    sudo raspi-config nonint do_wayland W2 2>/dev/null || true
+  else
+    sudo raspi-config nonint do_wayland W3 2>/dev/null || sudo raspi-config nonint do_wayland W2 2>/dev/null || sudo raspi-config nonint do_wayland 1 2>/dev/null || true
+  fi
+"
+
+run_step 2 "Asignando 128 MB de memoria a la GPU" "
+  sudo raspi-config nonint do_memory_split 128 2>/dev/null || true
+"
+
+run_step 3 "Configurando compositor Labwc sin cursor" "
+  mkdir -p '$HOME/.config/labwc'
+  printf '<?xml version=\"1.0\"?>\n<labwc_config>\n  <theme>\n    <cursorSize>1</cursorSize>\n  </theme>\n</labwc_config>\n' > '$HOME/.config/labwc/rc.xml'
+  printf 'XCURSOR_SIZE=1\n' > '$HOME/.config/labwc/environment'
+
+  sudo mkdir -p /etc/xdg/labwc
+  printf '<?xml version=\"1.0\"?>\n<labwc_config>\n  <theme>\n    <cursorSize>1</cursorSize>\n  </theme>\n</labwc_config>\n' | sudo tee /etc/xdg/labwc/rc.xml >/dev/null
+  printf 'XCURSOR_SIZE=1\n' | sudo tee /etc/xdg/labwc/environment >/dev/null
+"
+
+run_step 4 "Actualizando repositorios e instalando Chromium" "
+  rm -rf '$HOME/.local/share/keyrings' 2>/dev/null || true
+  sudo apt update -y && sudo apt install -y chromium-browser
+"
+
+run_step 5 "Creando entorno Python e instalando dependencias" "
   if [ ! -d '$PROJECT_DIR/venv' ]; then
     python3 -m venv '$PROJECT_DIR/venv'
   fi
   '$PROJECT_DIR/venv/bin/pip' install --upgrade pip
   '$PROJECT_DIR/venv/bin/pip' install -r '$PROJECT_DIR/requirements.txt'
 "
-run_step 4 "Generando lanzador start-kiosk.sh" "
+
+run_step 6 "Generando lanzador start-kiosk.sh optimizado" "
 cat << 'LAUNCHER' > '$PROJECT_DIR/start-kiosk.sh'
 #!/usr/bin/env bash
-xset s off
-xset -dpms
-xset s noblank
 
-unclutter -idle 0.5 -root &
+# Fijar CPU en 1.2 GHz fijos (modo performance)
+echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1 || true
 
 pkill -f 'server.py' 2>/dev/null || true
 
 cd '$PROJECT_DIR'
 '$PROJECT_DIR/venv/bin/python3' '$PROJECT_DIR/server/server.py' &
 
-sleep 3
+sleep 2
 
 chromium-browser --kiosk \
+  --ozone-platform=wayland \
+  --touch-events=enabled \
+  --blink-settings=primaryPointerType=4 \
   --password-store=basic \
   --noerrdialogs \
   --disable-infobars \
   --disable-translate \
-  --disable-features=TranslateUI \
+  --disable-features=TranslateUI,TouchpadAndWheelScrollLatching \
   --disable-pinch \
   --disable-session-crashed-bubble \
   --overscroll-history-navigation=0 \
   --check-for-update-interval=31536000 \
+  --enable-gpu-rasterization \
+  --enable-zero-copy \
+  --disable-gpu-vsync \
+  --disable-smooth-scrolling \
+  --renderer-process-limit=2 \
   http://localhost:8080/
 LAUNCHER
 chmod +x '$PROJECT_DIR/start-kiosk.sh'
 "
-run_step 5 "Registrando autoarranque del sistema" "
+
+run_step 7 "Registrando autoarranque del sistema" "
 mkdir -p '$HOME/.config/autostart'
 cat << 'AUTO' > '$HOME/.config/autostart/kiosk.desktop'
 [Desktop Entry]
@@ -2556,7 +2632,7 @@ echo -e "${Y}▶ VERIFICANDO INTEGRIDAD DEL SISTEMA${NC}"
 echo -e "${D}----------------------------------------------------------------${NC}"
 
 CHECK_COUNT=0
-TOTAL_CHECKS=6
+TOTAL_CHECKS=5
 
 check_item() {
   local name="$1"
@@ -2570,17 +2646,16 @@ check_item() {
 }
 
 check_item "Navegador Chromium" "which chromium-browser"
-check_item "Ocultador de cursor (unclutter)" "which unclutter"
+check_item "Configuración Labwc sin cursor" "test -f '$HOME/.config/labwc/rc.xml'"
 check_item "Entorno virtual Python" "test -f '$PROJECT_DIR/venv/bin/python3'"
 check_item "FastAPI Framework" "'$PROJECT_DIR/venv/bin/python3' -c 'import fastapi'"
 check_item "Servidor ASGI Uvicorn" "'$PROJECT_DIR/venv/bin/python3' -c 'import uvicorn'"
-check_item "Base de datos y esquema" "test -f '$PROJECT_DIR/db/schema.sql'"
 
 echo -e "\n${D}================================================================${NC}"
 if [ "$CHECK_COUNT" -eq "$TOTAL_CHECKS" ]; then
-  echo -e "${G}✔ [$CHECK_COUNT/$TOTAL_CHECKS] TODOS LOS COMPONENTES INSTALADOS Y LISTOS${NC}"
+  echo -e "${G}✔ [$CHECK_COUNT/$TOTAL_CHECKS] CONFIGURACIÓN LISTA${NC}"
   echo -e "${D}================================================================${NC}"
-  echo -e "\n${W}Todo configurado. Para iniciar el quiosco ejecuta:${NC}"
+  echo -e "\n${W}Todo configurado. Para iniciar ejecuta:${NC}"
   echo -e "${C}sudo reboot${NC}\n"
 else
   echo -e "${R}⚠ [$CHECK_COUNT/$TOTAL_CHECKS] ALGUNOS COMPONENTES FALLARON${NC}"

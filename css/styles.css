@@ -27,10 +27,11 @@
   --f-pixel: 'Press Start 2P', ui-monospace, 'Courier New', monospace;
 }
 
-* {
+*, *::before, *::after, html, body, #root {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  cursor: none !important;
 }
 
 #btnSubmitTaco {
@@ -71,7 +72,6 @@ body {
   background-color: #020203;
 }
 
-/* Medidas dinámicas 9:16 intactas */
 .frame {
   height: 100vh;
   height: 100dvh;
@@ -81,15 +81,24 @@ body {
   background-color: #08090b;
 }
 
-/* La pantalla activa se muestra normal */
+/* Pantallas inactivas totalmente apagadas en GPU y CPU */
 .screen {
+  display: none;
   width: 100%;
   height: 100%;
-  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
   padding: 2.6vh 2.5vh;
+}
+
+.screen.active {
+  display: flex;
+}
+
+/* Pausar la animación de home si está oculta */
+.screen:not(.active) .arrow {
+  animation: none !important;
 }
 
 .placa {
@@ -234,12 +243,14 @@ body {
 .arrow {
   width: 5vh;
   height: auto;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
   animation: bob 1.6s ease-in-out infinite;
 }
 
 @keyframes bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(8px); }
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, 8px, 0); }
 }
 
 .type-pill {
@@ -387,6 +398,7 @@ body {
 
 .reading { justify-content: center; }
 
+/* SPINNER ULTRALIGERO AISLADO EN CAPA GPU */
 .ringwrap {
   margin-top: 2.5vh;
   position: relative;
@@ -395,6 +407,24 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  isolation: isolate;
+}
+
+.ring-spinner {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 3.5px solid rgba(240, 201, 40, 0.2);
+  border-top-color: var(--hdp);
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  animation: spinRing 0.85s linear infinite;
+}
+
+@keyframes spinRing {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .nfc {
@@ -406,29 +436,7 @@ body {
   transform: translate(-50%, -50%);
   color: var(--hdp);
   z-index: 2;
-}
-
-/* Rueda delgada y fina */
-.ring-svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  animation: spinRing 1s linear infinite;
-  transform-origin: 50% 50%;
-}
-
-.ring-track {
-  stroke: rgba(240, 201, 40, 0.2);
-}
-
-.ring-blade {
-  stroke: var(--hdp);
-}
-
-@keyframes spinRing {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  pointer-events: none;
 }
 
 .reading-txt {

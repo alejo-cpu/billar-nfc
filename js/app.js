@@ -24,7 +24,7 @@
     }))
   );
 
-  const Home = () => h('div', { className: 'screen home' },
+  const Home = () => h(React.Fragment, null,
     h(Placa),
     h('div', { className: 'kicker' }, 'HDP BILLAR · IDENTIFICADOR'),
     h('h1', { className: 'screen-title' }, 'Elige tu sensación'),
@@ -80,7 +80,7 @@
     const suggestions = getSuggestions(cueData);
     const cueColor = cueData.color || 'var(--hdp)';
 
-    return h('div', { className: 'screen detail' },
+    return h(React.Fragment, null,
       h(Placa),
       h('div', { className: 'kicker' }, 'TACO ' + cueData.numero),
       h('div', { className: 'type-pill', style: { borderColor: cueColor, color: cueColor } }, cueData.sensacion),
@@ -111,16 +111,9 @@
     );
   };
 
-  const Reading = () => h('div', { className: 'screen reading' },
-    h(Placa),
-    h('div', { className: 'ringwrap' },
-      h('svg', { className: 'ring-svg', viewBox: '0 0 50 50' },
-        h('circle', { className: 'ring-track', cx: 25, cy: 25, r: 20, fill: 'none', strokeWidth: 2 }),
-        h('path', { className: 'ring-blade', d: 'M 25 5 A 20 20 0 0 1 45 25', fill: 'none', strokeWidth: 2, strokeLinecap: 'round' })
-      ),
-      h(NFC)
-    ),
-    h('p', { className: 'reading-txt' }, 'Leyendo taco…')
+  const Reading = () => h('div', { className: 'ringwrap' },
+    h('div', { className: 'ring-spinner' }),
+    h(NFC)
   );
 
   function App() {
@@ -143,14 +136,21 @@
       const id = ++runId.current;
       setView('reading');
 
-      Promise.all([
-        DB.getCue(nfcCode),
-        new Promise(r => setTimeout(r, CONFIG.READ_MS))
-      ]).then(([foundCue]) => {
-        if (id === runId.current) {
-          setCue(foundCue);
-          setView('detail');
-        }
+      // 1. Obtener datos inmediatamente
+      DB.getCue(nfcCode).then(foundCue => {
+        if (id !== runId.current) return;
+
+        // 2. Pre-cargar Detail mientras está oculto (0 ms de reflow visible)
+        setCue(foundCue);
+
+        // 3. Mantener el giro fluido el tiempo configurado
+        setTimeout(() => {
+          if (id === runId.current) {
+            requestAnimationFrame(() => {
+              setView('detail');
+            });
+          }
+        }, CONFIG.READ_MS);
       }).catch(() => {
         if (id === runId.current) setView('home');
       }).finally(resetIdle);
@@ -167,35 +167,35 @@
 
       const onKey = e => {
         clearTimeout(timer);
-        
         if (e.key === 'Enter') {
           resetIdle();
           const clean = buffer.trim();
-          if (clean.length >= 2) {
-            scan(clean);
-          }
+          if (clean.length >= 2) scan(clean);
           buffer = '';
           return;
         }
-
-        if (e.key.length === 1 && buffer.length < 50) {
-          buffer += e.key;
-        }
-
-        timer = setTimeout(() => {
-          buffer = '';
-        }, 700);
+        if (e.key.length === 1 && buffer.length < 50) buffer += e.key;
+        timer = setTimeout(() => { buffer = ''; }, 700);
       };
 
       window.addEventListener('keydown', onKey);
       return () => window.removeEventListener('keydown', onKey);
     }, [resetIdle, scan]);
 
+    // Los 3 paneles viven permanentemente en el DOM para eliminar la re-creación de capas
     return h('div', { className: 'stage' + (standby ? ' standby' : '') },
       h('div', { className: 'frame' },
-        view === 'home' && h(Home),
-        view === 'reading' && h(Reading),
-        view === 'detail' && h(Detail, { cue: cue })
+        h('div', { className: 'screen home' + (view === 'home' ? ' active' : '') },
+          h(Home)
+        ),
+        h('div', { className: 'screen reading' + (view === 'reading' ? ' active' : '') },
+          h(Placa),
+          h(Reading),
+          h('p', { className: 'reading-txt' }, 'Leyendo taco…')
+        ),
+        h('div', { className: 'screen detail' + (view === 'detail' ? ' active' : '') },
+          h(Detail, { cue: cue })
+        )
       ),
       h('div', { className: 'sleep' })
     );
