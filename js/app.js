@@ -24,7 +24,7 @@
     }))
   );
 
-  const Home = ({ isActive }) => h('div', { className: 'screen home' + (isActive ? ' active' : '') },
+  const Home = () => h('div', { className: 'screen home' },
     h(Placa),
     h('div', { className: 'kicker' }, 'HDP BILLAR · IDENTIFICADOR'),
     h('h1', { className: 'screen-title' }, 'Elige tu sensación'),
@@ -75,12 +75,12 @@
     return [balanced, power];
   }
 
-  const Detail = ({ cue, isActive }) => {
+  const Detail = ({ cue }) => {
     const cueData = cue || DB.principal();
     const suggestions = getSuggestions(cueData);
     const cueColor = cueData.color || 'var(--hdp)';
 
-    return h('div', { className: 'screen detail' + (isActive ? ' active' : '') },
+    return h('div', { className: 'screen detail' },
       h(Placa),
       h('div', { className: 'kicker' }, 'TACO ' + cueData.numero),
       h('div', { className: 'type-pill', style: { borderColor: cueColor, color: cueColor } }, cueData.sensacion),
@@ -111,8 +111,8 @@
     );
   };
 
-  // Rueda fina con strokeWidth de 2
-  const Reading = ({ isActive }) => h('div', { className: 'screen reading' + (isActive ? ' active' : '') },
+  // La rueda gira de forma permanente en GPU: grosor fino de 2px
+  const Reading = () => h('div', { className: 'screen reading' },
     h(Placa),
     h('div', { className: 'ringwrap' },
       h('svg', { className: 'ring-svg', viewBox: '0 0 50 50' },
@@ -144,14 +144,14 @@
       const id = ++runId.current;
       setView('reading');
 
-      // 1. La búsqueda en memoria se hace de inmediato en paralelo
-      // 2. Esperamos el tiempo justo sin tocar React durante el giro
+      // 1. Buscamos el taco de inmediato en memoria
+      // 2. Esperamos el tiempo sereno sin tocar nada de React
       Promise.all([
         DB.getCue(nfcCode),
         new Promise(r => setTimeout(r, CONFIG.READ_MS))
       ]).then(([foundCue]) => {
         if (id === runId.current) {
-          // Actualizamos los datos y la vista en un solo golpe limpio al final
+          // Cambiamos datos y pantalla en un único pulso sincronizado
           setCue(foundCue);
           setView('detail');
         }
@@ -197,9 +197,9 @@
 
     return h('div', { className: 'stage' + (standby ? ' standby' : '') },
       h('div', { className: 'frame' },
-        h(Home, { isActive: view === 'home' }),
-        h(Reading, { isActive: view === 'reading' }),
-        h(Detail, { cue: cue, isActive: view === 'detail' })
+        view === 'home' && h(Home),
+        view === 'reading' && h(Reading),
+        view === 'detail' && h(Detail, { cue: cue })
       ),
       h('div', { className: 'sleep' })
     );

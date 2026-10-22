@@ -83,24 +83,31 @@ body {
   background-color: #08090b;
 }
 
-/* Corte seco: sin transiciones, sin cálculos de opacidad */
 .screen {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  display: none;
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
   padding: 2.6vh 2.5vh;
+  z-index: 1;
 }
 
-.screen.active {
-  display: flex;
+.screen.home {
+  z-index: 2;
 }
 
-/* Placa limpia: cero sombras que pesen en la GPU */
+.screen.reading {
+  z-index: 3;
+}
+
+.screen.detail {
+  z-index: 4;
+}
+
 .placa {
   position: relative;
   width: 94%;
@@ -240,7 +247,6 @@ body {
   color: var(--hdp);
 }
 
-/* Animación 1: Flecha que sube y baja (movimiento puro sin tocar opacidad) */
 .arrow {
   width: 5vh;
   height: auto;
@@ -420,14 +426,14 @@ body {
   z-index: 2;
 }
 
-/* Animación 2: Rueda que gira constante sin tirones */
+/* Rueda fina que gira serena a velocidad continua */
 .ring-svg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   will-change: transform;
-  animation: spinRing 1s linear infinite;
+  animation: spinRing 1.3s linear infinite;
   transform-origin: center center;
 }
 

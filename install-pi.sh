@@ -76,6 +76,7 @@ run_step 2 "Configurando compositor Labwc sin cursor" "
   </theme>
 </labwc_config>
 XML
+  echo 'XCURSOR_SIZE=1' > '$HOME/.config/labwc/environment'
   killall -HUP labwc 2>/dev/null || true
 "
 
@@ -96,7 +97,6 @@ run_step 5 "Generando lanzador start-kiosk.sh optimizado" "
 cat << 'LAUNCHER' > '$PROJECT_DIR/start-kiosk.sh'
 #!/usr/bin/env bash
 
-# Fijar CPU en 1.2 GHz fijos (modo performance)
 echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1 || true
 
 pkill -f 'server.py' 2>/dev/null || true
