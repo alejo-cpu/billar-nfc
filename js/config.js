@@ -1,6 +1,6 @@
 const CONFIG = {
   LOCAL_API_URL: window.location.origin,
-  REMOTE_API_URL: "billar-nfc-production.up.railway.app",
+  REMOTE_API_URL: "https://billar-nfc-production.up.railway.app",
   SYNC_TOKEN: "Hdpbillar1985.",
   READ_MS: 1200,
   STANDBY_MS: 3 * 60 * 1000,
