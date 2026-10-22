@@ -95,16 +95,18 @@ run_step 4 "Creando entorno Python e instalando dependencias" "
   '$PROJECT_DIR/venv/bin/pip' install -r '$PROJECT_DIR/requirements.txt'
 "
 
-run_step 5 "Generando lanzador start-kiosk.sh nativo Labwc" "
+run_step 5 "Generando lanzador start-kiosk.sh optimizado" "
 cat << 'LAUNCHER' > '$PROJECT_DIR/start-kiosk.sh'
 #!/usr/bin/env bash
+
+# Fijar CPU en 1.2 GHz fijos (modo performance)
+echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1 || true
 
 pkill -f 'server.py' 2>/dev/null || true
 
 cd '$PROJECT_DIR'
 '$PROJECT_DIR/venv/bin/python3' '$PROJECT_DIR/server/server.py' &
 
-# Enviar el puntero microscópico a la esquina externa
 (
   for delay in 2 4 6; do
     sleep \$delay
@@ -114,6 +116,7 @@ cd '$PROJECT_DIR'
 
 sleep 2
 
+# Chromium con aceleración directa sin Vsync ni antialiasing innecesario
 chromium-browser --kiosk \
   --ozone-platform=wayland \
   --touch-events=enabled \
@@ -129,6 +132,8 @@ chromium-browser --kiosk \
   --check-for-update-interval=31536000 \
   --enable-gpu-rasterization \
   --enable-zero-copy \
+  --disable-gpu-vsync \
+  --disable-smooth-scrolling \
   --renderer-process-limit=2 \
   http://localhost:8080/
 LAUNCHER

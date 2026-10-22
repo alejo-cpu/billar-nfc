@@ -74,7 +74,6 @@ body {
   background-color: #020203;
 }
 
-/* El marco actúa como contenedor de capas */
 .frame {
   height: 100vh;
   height: 100dvh;
@@ -84,29 +83,24 @@ body {
   background-color: #08090b;
 }
 
-/* Las pantallas coexisten como capas en memoria sin destruirse */
+/* Corte seco: sin transiciones, sin cálculos de opacidad */
 .screen {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  display: flex;
+  display: none;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
   padding: 2.6vh 2.5vh;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 0.15s ease-out;
 }
 
 .screen.active {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
+  display: flex;
 }
 
+/* Placa limpia: cero sombras que pesen en la GPU */
 .placa {
   position: relative;
   width: 94%;
@@ -116,7 +110,6 @@ body {
   padding: 2vh 1.8vh;
   text-align: center;
   flex: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .placa::before, .placa::after {
@@ -247,17 +240,18 @@ body {
   color: var(--hdp);
 }
 
+/* Animación 1: Flecha que sube y baja (movimiento puro sin tocar opacidad) */
 .arrow {
   width: 5vh;
   height: auto;
-  will-change: transform, opacity;
+  will-change: transform;
   transform: translate3d(0, 0, 0);
-  animation: bob 1.8s ease-in-out infinite;
+  animation: bob 1.6s ease-in-out infinite;
 }
 
 @keyframes bob {
-  0%, 100% { transform: translate3d(0, 0, 0); opacity: .6; }
-  50% { transform: translate3d(0, 8px, 0); opacity: 1; }
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, 8px, 0); }
 }
 
 .type-pill {
@@ -426,14 +420,14 @@ body {
   z-index: 2;
 }
 
-/* Rueda con cadencia suave y constante */
+/* Animación 2: Rueda que gira constante sin tirones */
 .ring-svg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   will-change: transform;
-  animation: spinRing 1.2s linear infinite;
+  animation: spinRing 1s linear infinite;
   transform-origin: center center;
 }
 
@@ -465,9 +459,8 @@ body {
   inset: 0;
   z-index: 50;
   background: #000;
-  opacity: 0;
+  display: none;
   pointer-events: none;
-  transition: opacity 1.5s ease;
 }
 
-.standby .sleep { opacity: 1; }
+.standby .sleep { display: block; }
