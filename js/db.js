@@ -20,33 +20,32 @@ const DB = (function () {
     tacos: []
   };
 
-  // Cargar de memoria local al iniciar para respuesta inmediata sin lag
   try {
     const raw = localStorage.getItem(LOCAL_CACHE_KEY);
     if (raw) catalogo = JSON.parse(raw);
   } catch (e) {}
 
+  // Sincronización local y remota
   async function sync() {
     const baseUrl = CONFIG.LOCAL_API_URL || window.location.origin;
+    const headers = { 'X-Sync-Token': CONFIG.SYNC_TOKEN || '' };
 
-    // 1. PRIORIDAD: Sincronizar con el SQLite local de la propia Pi
     try {
-      const resLocal = await fetch(baseUrl + '/api/sync');
+      const resLocal = await fetch(baseUrl + '/api/sync', { headers });
       if (resLocal.ok) {
         catalogo = await resLocal.json();
         localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(catalogo));
-        console.log('[DB Local] Sincronización exitosa con SQLite. Tacos cargados:', catalogo.tacos.length);
       }
-    } catch (err) {
-      console.warn('[DB Local] Servidor local no respondió, usando datos en caché.');
-    }
+    } catch (err) {}
 
-    // 2. SEGUNDO PLANO: Sincronizar con Railway (si está configurado y activo)
     if (CONFIG.REMOTE_API_URL && CONFIG.REMOTE_API_URL.startsWith('http')) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500); // 3.5s timeout max
-        const resRemote = await fetch(CONFIG.REMOTE_API_URL + '/api/sync', { signal: controller.signal });
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const resRemote = await fetch(CONFIG.REMOTE_API_URL + '/api/sync', {
+          headers,
+          signal: controller.signal
+        });
         clearTimeout(timeoutId);
 
         if (resRemote.ok) {
@@ -54,26 +53,21 @@ const DB = (function () {
           if (remoteData && remoteData.tacos && remoteData.tacos.length > 0) {
             catalogo = remoteData;
             localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(catalogo));
-            console.log('[DB Nube] Sincronización exitosa con Railway.');
           }
         }
-      } catch (err) {
-        console.log('[DB Nube] Railway no disponible. Operando 100% offline con la base local.');
-      }
+      } catch (err) {}
     }
   }
 
-  // Sincronización inicial y bucle periódico
   sync();
   setInterval(sync, CONFIG.SYNC_INTERVAL_MS);
 
+  // Consulta de taco
   async function getCue(nfcUidOrNumero) {
     const raw = String(nfcUidOrNumero || '').trim();
-    // Limpieza de UID: convierte a minúsculas y elimina separadores como ':', '-' o espacios
     const cleanCode = raw.replace(/[^0-9a-fA-F]/g, '').toLowerCase();
     const cleanNum = raw.replace(/[^0-9]/g, '');
 
-    // 1. Buscar en la copia local en memoria (ultra rápido: 1-2 ms)
     const local = catalogo.tacos.find(t => {
       const tUid = String(t.nfc_uid || '').replace(/[^0-9a-fA-F]/g, '').toLowerCase();
       const tNum = String(t.numero || '').replace(/[^0-9]/g, '');
@@ -86,16 +80,13 @@ const DB = (function () {
       return formatTaco(local);
     }
 
-    // 2. Si no estaba en memoria (ej. se añadió hace segundos), consultar al servidor local
     try {
       const res = await fetch((CONFIG.LOCAL_API_URL || window.location.origin) + '/api/taco/' + encodeURIComponent(cleanCode || raw));
       if (res.ok) {
-        const remote = await res.json();
-        return remote;
+        return await res.json();
       }
     } catch (e) {}
 
-    // 3. Si no existe en el sistema
     return {
       ...FALLBACK,
       numero: cleanNum || (cleanCode ? cleanCode.slice(-4) : '??')

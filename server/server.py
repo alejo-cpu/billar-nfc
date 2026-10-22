@@ -4,10 +4,10 @@ import sys
 import re
 import sqlite3
 from typing import Optional
-from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi import FastAPI, HTTPException, Header, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel, field_validator
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -18,6 +18,7 @@ DB_PATH = os.path.join(BASE_DIR, 'db', 'tacos.db')
 SCHEMA_PATH = os.path.join(BASE_DIR, 'db', 'schema.sql')
 
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'hdp1985')
+SYNC_TOKEN = os.environ.get('SYNC_TOKEN', 'hdp-sync-secret-1985')
 STANDARD_CATS = {'LIGHT', 'BALANCED', 'POWER'}
 
 app = FastAPI(title="HDP Billar NFC API")
@@ -30,6 +31,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Conexión SQLite
 def get_db():
     conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
@@ -62,6 +64,7 @@ def get_next_available_number(conn):
         n += 1
     return f"{n:02d}"
 
+# Modelos
 class LoginRequest(BaseModel):
     password: str
 
@@ -84,7 +87,7 @@ class CategoriaModel(BaseModel):
     def to_upper_clean(cls, v: str):
         cleaned = v.strip().upper()
         if not cleaned:
-            raise ValueError('Campo obligatorio no puede estar vacío.')
+            raise ValueError('Campo obligatorio vacío.')
         return cleaned
 
 class TacoModel(BaseModel):
@@ -103,7 +106,7 @@ class TacoModel(BaseModel):
     def validate_uid(cls, v: str):
         cleaned = v.strip().lower()
         if not re.match(r'^[0-9a-f]{4,32}$', cleaned):
-            raise ValueError('El UID debe contener entre 4 y 32 caracteres hexadecimales (0-9, a-f).')
+            raise ValueError('UID debe ser hexadecimal (4 a 32 caracteres).')
         return cleaned
 
     @field_validator('numero')
@@ -112,10 +115,11 @@ class TacoModel(BaseModel):
         if v is not None and v.strip() != "":
             cleaned = v.strip()
             if not re.match(r'^[0-9]{1,4}$', cleaned):
-                raise ValueError('El número debe contener exclusivamente dígitos numéricos.')
+                raise ValueError('El número debe contener solo dígitos.')
             return cleaned
         return None
 
+# Autenticación
 def verify_admin(x_admin_password: Optional[str] = Header(None)):
     if not x_admin_password or x_admin_password != ADMIN_PASSWORD:
         raise HTTPException(status_code=401, detail="No autorizado")
@@ -139,8 +143,16 @@ def login(req: LoginRequest):
     finally:
         conn.close()
 
+# Sincronización con token privado
 @app.get("/api/sync")
-def sync_data():
+def sync_data(request: Request, x_sync_token: Optional[str] = Header(None), token: Optional[str] = None):
+    is_local = request.client and request.client.host in ("127.0.0.1", "localhost")
+    client_token = x_sync_token or token
+
+    if not is_local and SYNC_TOKEN:
+        if client_token != SYNC_TOKEN and client_token != ADMIN_PASSWORD:
+            raise HTTPException(status_code=401, detail="No autorizado")
+
     conn = get_db()
     try:
         cats = conn.execute("SELECT * FROM categorias").fetchall()
@@ -226,7 +238,7 @@ def create_taco(taco: TacoModel, authorized: bool = Depends(verify_admin)):
             ))
         return {"status": "ok", "numero": numero}
     except sqlite3.IntegrityError:
-        raise HTTPException(status_code=400, detail="El UID NFC o el Número ya están registrados.")
+        raise HTTPException(status_code=400, detail="UID NFC o Número ya registrado.")
     finally:
         conn.close()
 
@@ -277,7 +289,7 @@ def list_categorias():
 @app.post("/api/categorias")
 def create_or_update_categoria(cat: CategoriaModel, authorized: bool = Depends(verify_admin)):
     if cat.id in STANDARD_CATS:
-        raise HTTPException(status_code=400, detail="Las categorías estándar (LIGHT, BALANCED, POWER) son fijas y no se pueden modificar.")
+        raise HTTPException(status_code=400, detail="Categorías estándar fijas.")
     
     conn = get_db()
     try:
@@ -305,25 +317,28 @@ def create_or_update_categoria(cat: CategoriaModel, authorized: bool = Depends(v
 @app.delete("/api/categorias/{cat_id}")
 def delete_categoria(cat_id: str, authorized: bool = Depends(verify_admin)):
     if cat_id in STANDARD_CATS:
-        raise HTTPException(status_code=400, detail="No se pueden eliminar las categorías estándar.")
+        raise HTTPException(status_code=400, detail="No se pueden borrar estándar.")
         
     conn = get_db()
     try:
         with conn:
             usage = conn.execute("SELECT COUNT(*) FROM tacos WHERE categoria_id = ?", (cat_id,)).fetchone()[0]
             if usage > 0:
-                raise HTTPException(status_code=400, detail="No puedes eliminar una categoría con tacos asignados.")
+                raise HTTPException(status_code=400, detail="Categoría en uso.")
             conn.execute("DELETE FROM categorias WHERE id = ? AND es_estandar = 0", (cat_id,))
         return {"status": "ok"}
     finally:
         conn.close()
 
+# Vistas
 @app.get("/admin")
 def serve_admin():
     return FileResponse(os.path.join(BASE_DIR, 'admin.html'))
 
 @app.get("/")
 def serve_index():
+    if os.environ.get("RAILWAY_ENVIRONMENT") or os.environ.get("IS_REMOTE"):
+        return RedirectResponse(url="/admin")
     return FileResponse(os.path.join(BASE_DIR, 'index.html'))
 
 for static_dir in ['css', 'js', 'img', 'fonts', 'vendor']:
