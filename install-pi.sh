@@ -18,10 +18,10 @@ cat << 'BANNER'
  | |  | | |__| | |       | |_) |_| |_| |____| |____ / ____ \| | \ \ 
  |_|  |_|_____/|_|       |____/|_____|______|______/_/    \_\_|  \_\
 
-                         EST. 1985 · QUIOSCO NFC
+                         EST. 1985 · BILLAR NFC
 BANNER
 echo -e "${D}================================================================${NC}"
-echo -e "${Y}▶ INSTALADOR QUIOSCO MODO WAYLAND (60 FPS + CURSOR INVISIBLE)${NC}"
+echo -e "${Y}▶ INSTALADOR DE QUIOSCO AUTOMATIZADO${NC}"
 echo -e "${D}================================================================${NC}\n"
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -56,16 +56,14 @@ run_step() {
   fi
 }
 
-run_step 1 "Restaurando motor gráfico Wayland (Aceleración GPU)" "sudo raspi-config nonint do_wayland W2 2>/dev/null || sudo raspi-config nonint do_wayland W3 2>/dev/null || true"
+run_step 1 "Restaurando motor gráfico Wayland" "sudo raspi-config nonint do_wayland W2 2>/dev/null || sudo raspi-config nonint do_wayland W3 2>/dev/null || true"
 
-run_step 2 "Instalando tema de cursor invisible en el sistema" "
+run_step 2 "Instalando tema de cursor invisible" "
   sudo mkdir -p /usr/share/icons/blank/cursors
-  # Crear archivo de cursor transparente de 1x1 píxel
   echo -ne '\x00\x00\x00\x00' | sudo tee /usr/share/icons/blank/cursors/left_ptr >/dev/null
   sudo cp /usr/share/icons/blank/cursors/left_ptr /usr/share/icons/blank/cursors/default
   sudo cp /usr/share/icons/blank/cursors/left_ptr /usr/share/icons/blank/cursors/pointer
   
-  # Forzar tema blank por defecto en todo el sistema y en el usuario
   sudo mkdir -p /usr/share/icons/default
   echo -e '[Icon Theme]\nInherits=blank' | sudo tee /usr/share/icons/default/index.theme >/dev/null
   mkdir -p '$HOME/.icons/default'
@@ -85,7 +83,7 @@ run_step 4 "Creando entorno Python e instalando dependencias" "
   '$PROJECT_DIR/venv/bin/pip' install -r '$PROJECT_DIR/requirements.txt'
 "
 
-run_step 5 "Generando lanzador start-kiosk.sh nativo Wayland" "
+run_step 5 "Generando lanzador start-kiosk.sh" "
 cat << 'LAUNCHER' > '$PROJECT_DIR/start-kiosk.sh'
 #!/usr/bin/env bash
 
@@ -96,7 +94,6 @@ cd '$PROJECT_DIR'
 
 sleep 2
 
-# Chromium ejecutándose de forma nativa sobre Wayland con GPU pura
 chromium-browser --kiosk \
   --ozone-platform=wayland \
   --password-store=basic \
@@ -153,9 +150,9 @@ check_item "Servidor ASGI Uvicorn" "'$PROJECT_DIR/venv/bin/python3' -c 'import u
 
 echo -e "\n${D}================================================================${NC}"
 if [ "$CHECK_COUNT" -eq "$TOTAL_CHECKS" ]; then
-  echo -e "${G}✔ [$CHECK_COUNT/$TOTAL_CHECKS] CONFIGURACIÓN WAYLAND LISTA${NC}"
+  echo -e "${G}✔ [$CHECK_COUNT/$TOTAL_CHECKS] CONFIGURACIÓN LISTA${NC}"
   echo -e "${D}================================================================${NC}"
-  echo -e "\n${W}Todo configurado. Para reiniciar en Wayland sin cursor corre:${NC}"
+  echo -e "\n${W}Todo configurado. Para iniciar ejecuta:${NC}"
   echo -e "${C}sudo reboot${NC}\n"
 else
   echo -e "${R}⚠ [$CHECK_COUNT/$TOTAL_CHECKS] ALGUNOS COMPONENTES FALLARON${NC}"
