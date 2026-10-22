@@ -72,7 +72,7 @@ body {
   background-color: #08090b;
 }
 
-/* CAMBIO SECO INSTANTÁNEO (SIN FUNDIDOS NI MEZCLA DE CAPAS) */
+/* CORTE SECO Y DIRECTO EN TODAS LAS ESCENAS (CERO FUNDIDOS) */
 .screen {
   position: absolute;
   inset: 0;
@@ -83,10 +83,12 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 2.6vh 2.5vh;
+  transition: none !important;
 }
 
 .screen.active {
   display: flex;
+  transition: none !important;
 }
 
 .screen:not(.active) .arrow {
@@ -387,7 +389,7 @@ body {
   flex: none;
 }
 
-/* RUEDA EN ENTEROS EXACTOS: 96px x 96px */
+/* SPINNER ENTERO SIN SUBPÍXELES */
 .ringwrap {
   position: relative;
   width: 96px;
@@ -408,6 +410,7 @@ body {
   border-right: 4px solid var(--hdp);
   transform: translateZ(0);
   animation: spinRing 0.8s linear infinite;
+  transition: none !important;
 }
 
 @keyframes spinRing {
