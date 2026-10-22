@@ -24,7 +24,10 @@
     }))
   );
 
-  const Home = () => h('div', { className: 'screen home' },
+  const Home = ({ isVisible }) => h('div', { 
+    className: 'screen home',
+    style: { display: isVisible ? 'flex' : 'none' }
+  },
     h(Placa),
     h('div', { className: 'kicker' }, 'HDP BILLAR · IDENTIFICADOR'),
     h('h1', { className: 'screen-title' }, 'Elige tu sensación'),
@@ -53,8 +56,8 @@
     )
   );
 
-  // --- Algoritmo de Sugerencias con la fórmula física ---
   function getSuggestions(cue) {
+    if (!cue) return [];
     const cats = DB.getCategorias();
     const light = cats.find(c => c.id === 'LIGHT') || { nombre: 'LIGHT', color: 'var(--green)', other_text: 'Más ligero y ágil.' };
     const balanced = cats.find(c => c.id === 'BALANCED') || { nombre: 'BALANCED', color: 'var(--hdp)', other_text: 'Equilibrado y versátil.' };
@@ -66,7 +69,6 @@
       return [light, balanced];
     }
 
-    // Fórmula para tacos personalizados: (Peso + (6 - Agilidad) - 2) / 8 * 100
     const peso = cue.peso || 3;
     const agilidad = cue.agilidad || 3;
     const pesadez = ((peso + (6 - agilidad) - 2) / 8) * 100;
@@ -76,26 +78,30 @@
     return [balanced, power];
   }
 
-  const Detail = ({ cue }) => {
-    const suggestions = getSuggestions(cue);
-    const cueColor = cue.color || 'var(--hdp)';
+  const Detail = ({ cue, isVisible }) => {
+    const cueData = cue || DB.principal();
+    const suggestions = getSuggestions(cueData);
+    const cueColor = cueData.color || 'var(--hdp)';
 
-    return h('div', { className: 'screen detail' },
+    return h('div', { 
+      className: 'screen detail',
+      style: { display: isVisible ? 'flex' : 'none' }
+    },
       h(Placa),
-      h('div', { className: 'kicker' }, 'TACO ' + cue.numero),
-      h('div', { className: 'type-pill', style: { borderColor: cueColor, color: cueColor } }, cue.sensacion),
-      h('div', { className: 'type-tag' }, cue.tag),
-      h('p', { className: 'desc' }, cue.descripcion),
+      h('div', { className: 'kicker' }, 'TACO ' + cueData.numero),
+      h('div', { className: 'type-pill', style: { borderColor: cueColor, color: cueColor } }, cueData.sensacion),
+      h('div', { className: 'type-tag' }, cueData.tag),
+      h('p', { className: 'desc' }, cueData.descripcion),
       h('div', { className: 'stats' },
         h('div', { className: 'srow' },
-          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'PESO'), h(Dots, { v: cue.peso, color: cueColor })),
-          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'AGILIDAD'), h(Dots, { v: cue.agilidad, color: cueColor }))
+          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'PESO'), h(Dots, { v: cueData.peso, color: cueColor })),
+          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'AGILIDAD'), h(Dots, { v: cueData.agilidad, color: cueColor }))
         ),
         h('div', { className: 'srow' },
-          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'GOLPE'), h('div', { className: 'val' }, cue.golpe)),
-          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'SENSACIÓN'), h('div', { className: 'val' }, cue.sensacion_texto))
+          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'GOLPE'), h('div', { className: 'val' }, cueData.golpe)),
+          h('div', { className: 'scell' }, h('div', { className: 'lab' }, 'SENSACIÓN'), h('div', { className: 'val' }, cueData.sensacion_texto))
         ),
-        h('div', { className: 'scell full' }, h('div', { className: 'lab' }, 'IDEAL PARA'), h('div', { className: 'val soft' }, cue.ideal))
+        h('div', { className: 'scell full' }, h('div', { className: 'lab' }, 'IDEAL PARA'), h('div', { className: 'val soft' }, cueData.ideal))
       ),
       h('div', { className: 'divider' }),
       h('div', { className: 'other-title' }, '¿Buscas otra sensación?'),
@@ -111,7 +117,10 @@
     );
   };
 
-  const Reading = () => h('div', { className: 'screen reading' },
+  const Reading = ({ isVisible }) => h('div', { 
+    className: 'screen reading',
+    style: { display: isVisible ? 'flex' : 'none' }
+  },
     h(Placa),
     h('div', { className: 'ringwrap' }, h('span', { className: 'ring' }), h(NFC)),
     h('p', { className: 'reading-txt' }, 'Leyendo taco…')
@@ -156,7 +165,6 @@
       return () => { window.NFC_SCAN = null; clearTimeout(idleRef.current); };
     }, [scan]);
 
-    // Listener de teclado con protección contra buffer sucio (auto-limpieza por timeout)
     useEffect(() => {
       let buffer = '';
       let timer = null;
@@ -178,7 +186,6 @@
           buffer += e.key;
         }
 
-        // 700ms de tolerancia para lectores USB en Raspberry Pi
         timer = setTimeout(() => {
           buffer = '';
         }, 700);
@@ -190,7 +197,9 @@
 
     return h('div', { className: 'stage' + (standby ? ' standby' : '') },
       h('div', { className: 'frame' },
-        view === 'home' ? h(Home) : (view === 'detail' && cue ? h(Detail, { cue }) : h(Reading))
+        h(Home, { isVisible: view === 'home' }),
+        h(Reading, { isVisible: view === 'reading' }),
+        h(Detail, { cue: cue, isVisible: view === 'detail' })
       ),
       h('div', { className: 'sleep' })
     );

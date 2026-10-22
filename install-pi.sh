@@ -56,7 +56,6 @@ run_step() {
   fi
 }
 
-# Paso 1: Si está en X11, detecta el compositor Wayland y lo activa
 run_step 1 "Verificando y forzando cambio de X11 a Wayland" "
   if which labwc >/dev/null 2>&1; then
     sudo raspi-config nonint do_wayland W3 2>/dev/null || true
@@ -67,21 +66,25 @@ run_step 1 "Verificando y forzando cambio de X11 a Wayland" "
   fi
 "
 
-run_step 2 "Instalando tema de cursor invisible" "
-  sudo mkdir -p /usr/share/icons/blank/cursors
-  echo -ne '\x00\x00\x00\x00' | sudo tee /usr/share/icons/blank/cursors/left_ptr >/dev/null
-  sudo cp /usr/share/icons/blank/cursors/left_ptr /usr/share/icons/blank/cursors/default
-  sudo cp /usr/share/icons/blank/cursors/left_ptr /usr/share/icons/blank/cursors/pointer
-  
-  sudo mkdir -p /usr/share/icons/default
-  echo -e '[Icon Theme]\nInherits=blank' | sudo tee /usr/share/icons/default/index.theme >/dev/null
-  mkdir -p '$HOME/.icons/default'
-  echo -e '[Icon Theme]\nInherits=blank' > '$HOME/.icons/default/index.theme'
+run_step 2 "Configurando compositor Labwc para ocultar cursor" "
+  sudo rm -rf /usr/share/icons/blank /usr/share/icons/default '$HOME/.icons/default' 2>/dev/null || true
+  mkdir -p '$HOME/.config/labwc'
+  echo 'XCURSOR_SIZE=1' > '$HOME/.config/labwc/environment'
+  cat << 'XML' > '$HOME/.config/labwc/rc.xml'
+<?xml version=\"1.0\"?>
+<labwc_config>
+  <core>
+    <cursor>
+      <size>1</size>
+    </cursor>
+  </core>
+</labwc_config>
+XML
 "
 
-run_step 3 "Actualizando repositorios e instalando Chromium" "
+run_step 3 "Actualizando repositorios e instalando herramientas" "
   rm -rf '$HOME/.local/share/keyrings' 2>/dev/null || true
-  sudo apt update -y && sudo apt install -y chromium-browser
+  sudo apt update -y && sudo apt install -y chromium-browser wlrctl
 "
 
 run_step 4 "Creando entorno Python e instalando dependencias" "
@@ -92,7 +95,7 @@ run_step 4 "Creando entorno Python e instalando dependencias" "
   '$PROJECT_DIR/venv/bin/pip' install -r '$PROJECT_DIR/requirements.txt'
 "
 
-run_step 5 "Generando lanzador start-kiosk.sh" "
+run_step 5 "Generando lanzador start-kiosk.sh nativo Labwc" "
 cat << 'LAUNCHER' > '$PROJECT_DIR/start-kiosk.sh'
 #!/usr/bin/env bash
 
@@ -101,10 +104,20 @@ pkill -f 'server.py' 2>/dev/null || true
 cd '$PROJECT_DIR'
 '$PROJECT_DIR/venv/bin/python3' '$PROJECT_DIR/server/server.py' &
 
+# Enviar el puntero microscópico a la esquina externa
+(
+  for delay in 2 4 6; do
+    sleep \$delay
+    which wlrctl >/dev/null 2>&1 && wlrctl pointer move 9999 9999 2>/dev/null || true
+  done
+) &
+
 sleep 2
 
 chromium-browser --kiosk \
   --ozone-platform=wayland \
+  --touch-events=enabled \
+  --blink-settings=primaryPointerType=4 \
   --password-store=basic \
   --noerrdialogs \
   --disable-infobars \
@@ -152,7 +165,7 @@ check_item() {
 }
 
 check_item "Navegador Chromium" "which chromium-browser"
-check_item "Tema de cursor transparente" "test -f /usr/share/icons/default/index.theme"
+check_item "Controlador Wayland (wlrctl)" "which wlrctl"
 check_item "Entorno virtual Python" "test -f '$PROJECT_DIR/venv/bin/python3'"
 check_item "FastAPI Framework" "'$PROJECT_DIR/venv/bin/python3' -c 'import fastapi'"
 check_item "Servidor ASGI Uvicorn" "'$PROJECT_DIR/venv/bin/python3' -c 'import uvicorn'"
