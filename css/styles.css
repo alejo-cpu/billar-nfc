@@ -245,7 +245,6 @@ body {
   color: var(--hdp);
 }
 
-/* Optimización GPU para flecha animada */
 .arrow {
   width: 5vh;
   height: auto;
@@ -403,37 +402,54 @@ body {
 }
 
 .reading { justify-content: center; }
+
+/* Contenedor de la rueda de carga */
 .ringwrap {
   margin-top: 2.5vh;
   position: relative;
-  width: 8vh;
-  height: 8vh;
+  width: 8.5vh;
+  height: 8.5vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .nfc {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 5vh;
-  height: 5vh;
+  width: 4.8vh;
+  height: 4.8vh;
   transform: translate(-50%, -50%);
   color: var(--hdp);
+  z-index: 2;
 }
 
-/* Optimización GPU para spinner de carga */
-.ring {
+/* Rueda de carga por GPU ultra-fluida */
+.ring-svg {
   position: absolute;
   inset: 0;
-  border-radius: 50%;
-  border: 4px solid rgba(240, 201, 40, .2);
-  border-top-color: var(--hdp);
+  width: 100%;
+  height: 100%;
   will-change: transform;
-  transform: translate3d(0, 0, 0);
-  animation: spin 0.8s linear infinite;
+  animation: spinRing 0.9s linear infinite;
+  transform-origin: center center;
 }
 
-@keyframes spin { 
-  to { transform: rotate(360deg) translate3d(0, 0, 0); } 
+.ring-track {
+  stroke: rgba(240, 201, 40, 0.2);
+}
+
+.ring-blade {
+  stroke: var(--hdp);
+  stroke-linecap: round;
+  stroke-dasharray: 45 125;
+  stroke-dashoffset: 0;
+}
+
+@keyframes spinRing {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .reading-txt {

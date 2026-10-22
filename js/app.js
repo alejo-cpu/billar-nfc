@@ -117,12 +117,19 @@
     );
   };
 
+  // Spinner circular en SVG acelerado por hardware
   const Reading = ({ isVisible }) => h('div', { 
     className: 'screen reading',
     style: { display: isVisible ? 'flex' : 'none' }
   },
     h(Placa),
-    h('div', { className: 'ringwrap' }, h('span', { className: 'ring' }), h(NFC)),
+    h('div', { className: 'ringwrap' },
+      h('svg', { className: 'ring-svg', viewBox: '0 0 50 50' },
+        h('circle', { className: 'ring-track', cx: 25, cy: 25, r: 20, fill: 'none', strokeWidth: 4 }),
+        h('circle', { className: 'ring-blade', cx: 25, cy: 25, r: 20, fill: 'none', strokeWidth: 4 })
+      ),
+      h(NFC)
+    ),
     h('p', { className: 'reading-txt' }, 'Leyendo taco…')
   );
 
