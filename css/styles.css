@@ -34,16 +34,7 @@
   cursor: none !important;
 }
 
-#btnSubmitTaco {
-  width: 100%;
-  justify-content: center;
-}
-
-#c_ideal {
-  width: 100%;
-}
-
-#btnSaveCat {
+#btnSubmitTaco, #c_ideal, #btnSaveCat {
   width: 100%;
 }
 
@@ -81,22 +72,29 @@ body {
   background-color: #08090b;
 }
 
-/* Pantallas inactivas totalmente apagadas en GPU y CPU */
+/* Transición por opacidad instantánea (cero tirones de layout) */
 .screen {
-  display: none;
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
   padding: 2.6vh 2.5vh;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease-out;
 }
 
 .screen.active {
-  display: flex;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
-/* Pausar la animación de home si está oculta */
 .screen:not(.active) .arrow {
   animation: none !important;
 }
@@ -243,7 +241,6 @@ body {
 .arrow {
   width: 5vh;
   height: auto;
-  will-change: transform;
   transform: translate3d(0, 0, 0);
   animation: bob 1.6s ease-in-out infinite;
 }
@@ -396,30 +393,27 @@ body {
   flex: none;
 }
 
-.reading { justify-content: center; }
-
-/* SPINNER ULTRALIGERO AISLADO EN CAPA GPU */
+/* RUEDA EN ENTEROS EXACTOS: 96px x 96px */
 .ringwrap {
-  margin-top: 2.5vh;
   position: relative;
-  width: 8.5vh;
-  height: 8.5vh;
+  width: 96px;
+  height: 96px;
   display: flex;
   align-items: center;
   justify-content: center;
-  isolation: isolate;
+  margin: auto 0;
 }
 
 .ring-spinner {
-  position: absolute;
-  inset: 0;
+  width: 96px;
+  height: 96px;
   box-sizing: border-box;
   border-radius: 50%;
-  border: 3.5px solid rgba(240, 201, 40, 0.2);
-  border-top-color: var(--hdp);
-  will-change: transform;
-  transform: translate3d(0, 0, 0);
-  animation: spinRing 0.85s linear infinite;
+  border: 4px solid rgba(240, 201, 40, 0.15);
+  border-top: 4px solid var(--hdp);
+  border-right: 4px solid var(--hdp);
+  transform: translateZ(0);
+  animation: spinRing 0.8s linear infinite;
 }
 
 @keyframes spinRing {
@@ -429,21 +423,17 @@ body {
 
 .nfc {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 4.8vh;
-  height: 4.8vh;
-  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
   color: var(--hdp);
-  z-index: 2;
   pointer-events: none;
 }
 
 .reading-txt {
-  margin-top: 1.8vh;
   font-size: 1.8vh;
   color: var(--hdp);
   letter-spacing: .08em;
+  margin-bottom: 4vh;
 }
 
 .sleep {

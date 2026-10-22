@@ -136,16 +136,12 @@
       const id = ++runId.current;
       setView('reading');
 
-      // 1. Obtener datos inmediatamente
       DB.getCue(nfcCode).then(foundCue => {
         if (id !== runId.current) return;
 
-        // 2. Pre-cargar Detail mientras está oculto (0 ms de reflow visible)
-        setCue(foundCue);
-
-        // 3. Mantener el giro fluido el tiempo configurado
         setTimeout(() => {
           if (id === runId.current) {
+            setCue(foundCue);
             requestAnimationFrame(() => {
               setView('detail');
             });
@@ -182,7 +178,6 @@
       return () => window.removeEventListener('keydown', onKey);
     }, [resetIdle, scan]);
 
-    // Los 3 paneles viven permanentemente en el DOM para eliminar la re-creación de capas
     return h('div', { className: 'stage' + (standby ? ' standby' : '') },
       h('div', { className: 'frame' },
         h('div', { className: 'screen home' + (view === 'home' ? ' active' : '') },
