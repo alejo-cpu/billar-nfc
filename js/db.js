@@ -25,11 +25,12 @@ const DB = (function () {
     if (raw) catalogo = JSON.parse(raw);
   } catch (e) {}
 
-  // Sincronización local y remota
+  // Sincronización y espejo en SQLite local
   async function sync() {
     const baseUrl = CONFIG.LOCAL_API_URL || window.location.origin;
     const headers = { 'X-Sync-Token': CONFIG.SYNC_TOKEN || '' };
 
+    // 1. Cargar datos locales de arranque
     try {
       const resLocal = await fetch(baseUrl + '/api/sync', { headers });
       if (resLocal.ok) {
@@ -38,10 +39,11 @@ const DB = (function () {
       }
     } catch (err) {}
 
+    // 2. Consultar a Railway (Nube)
     if (CONFIG.REMOTE_API_URL && CONFIG.REMOTE_API_URL.startsWith('http')) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
         const resRemote = await fetch(CONFIG.REMOTE_API_URL + '/api/sync', {
           headers,
           signal: controller.signal
@@ -50,9 +52,19 @@ const DB = (function () {
 
         if (resRemote.ok) {
           const remoteData = await resRemote.json();
-          if (remoteData && remoteData.tacos && remoteData.tacos.length > 0) {
+          if (remoteData && remoteData.tacos) {
             catalogo = remoteData;
             localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(catalogo));
+
+            // Replicar en el archivo SQLite físico de la Pi (con borrado automático)
+            fetch(baseUrl + '/api/sync/mirror', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Sync-Token': CONFIG.SYNC_TOKEN || ''
+              },
+              body: JSON.stringify(remoteData)
+            }).catch(() => {});
           }
         }
       } catch (err) {}

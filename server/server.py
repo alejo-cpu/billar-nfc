@@ -3,7 +3,7 @@ import os
 import sys
 import re
 import sqlite3
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, Header, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -95,7 +95,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Conexión SQLite
 def get_db():
     conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
@@ -137,9 +136,12 @@ def get_next_available_number(conn):
         n += 1
     return f"{n:02d}"
 
-# Modelos
 class LoginRequest(BaseModel):
     password: str
+
+class MirrorPayload(BaseModel):
+    categorias: List[Dict[str, Any]]
+    tacos: List[Dict[str, Any]]
 
 class CategoriaModel(BaseModel):
     id: str
@@ -192,7 +194,6 @@ class TacoModel(BaseModel):
             return cleaned
         return None
 
-# Autenticación
 def verify_admin(x_admin_password: Optional[str] = Header(None)):
     if not x_admin_password or x_admin_password != ADMIN_PASSWORD:
         raise HTTPException(status_code=401, detail="No autorizado")
@@ -216,7 +217,7 @@ def login(req: LoginRequest):
     finally:
         conn.close()
 
-# Sincronización con token privado
+# Endpoint para descargar datos de Railway
 @app.get("/api/sync")
 def sync_data(request: Request, x_sync_token: Optional[str] = Header(None), token: Optional[str] = None):
     is_local = request.client and request.client.host in ("127.0.0.1", "localhost")
@@ -240,6 +241,62 @@ def sync_data(request: Request, x_sync_token: Optional[str] = Header(None), toke
             "tacos": [dict(t) for t in cues],
             "version": os.path.getmtime(DB_PATH) if os.path.exists(DB_PATH) else 1
         }
+    finally:
+        conn.close()
+
+# Endpoint espejo: actualiza SQLite local y elimina lo que no exista en la nube
+@app.post("/api/sync/mirror")
+def mirror_database(data: MirrorPayload, request: Request, x_sync_token: Optional[str] = Header(None)):
+    is_local = request.client and request.client.host in ("127.0.0.1", "localhost")
+    if not is_local and SYNC_TOKEN and x_sync_token != SYNC_TOKEN:
+        raise HTTPException(status_code=401, detail="No autorizado")
+
+    conn = get_db()
+    try:
+        with conn:
+            # 1. Espejo de Categorías
+            remote_cat_ids = [c["id"] for c in data.categorias if "id" in c]
+            if remote_cat_ids:
+                placeholders = ",".join("?" * len(remote_cat_ids))
+                conn.execute(f"DELETE FROM categorias WHERE id NOT IN ({placeholders}) AND es_estandar = 0", remote_cat_ids)
+            
+            for c in data.categorias:
+                conn.execute("""
+                    INSERT OR REPLACE INTO categorias 
+                    (id, nombre, color, tagline, descripcion_default, ideal_default, other_text, peso_default, agilidad_default, golpe_default, sensacion_texto_default, es_estandar)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    c["id"], c["nombre"], c["color"], c["tagline"],
+                    c["descripcion_default"], c["ideal_default"],
+                    c.get("other_text", c["descripcion_default"]),
+                    c.get("peso_default", 3), c.get("agilidad_default", 3),
+                    c.get("golpe_default", "Equilibrado"),
+                    c.get("sensacion_texto_default", "Natural y estable"),
+                    c.get("es_estandar", 0)
+                ))
+
+            # 2. Espejo de Tacos (Borrado automático de tacos no presentes en la nube)
+            remote_uids = [t["nfc_uid"] for t in data.tacos if "nfc_uid" in t]
+            if remote_uids:
+                placeholders = ",".join("?" * len(remote_uids))
+                conn.execute(f"DELETE FROM tacos WHERE nfc_uid NOT IN ({placeholders})", remote_uids)
+            else:
+                conn.execute("DELETE FROM tacos")
+
+            for t in data.tacos:
+                conn.execute("""
+                    INSERT OR REPLACE INTO tacos 
+                    (nfc_uid, numero, categoria_id, peso, agilidad, golpe, sensacion_texto, descripcion_custom, ideal_custom)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    t["nfc_uid"], t["numero"], t["categoria_id"],
+                    t.get("peso", 3), t.get("agilidad", 3),
+                    t.get("golpe", "Equilibrado"),
+                    t.get("sensacion_texto", "Natural y estable"),
+                    t.get("descripcion_custom"), t.get("ideal_custom")
+                ))
+
+        return {"status": "ok", "mirrored_tacos": len(data.tacos)}
     finally:
         conn.close()
 
@@ -403,7 +460,6 @@ def delete_categoria(cat_id: str, authorized: bool = Depends(verify_admin)):
     finally:
         conn.close()
 
-# Vistas
 @app.get("/admin")
 def serve_admin():
     return FileResponse(os.path.join(BASE_DIR, 'admin.html'))
