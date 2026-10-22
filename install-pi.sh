@@ -1,34 +1,86 @@
 #!/usr/bin/env bash
-set -e
 
-echo "=== Instalando Quiosco HDP Billar en Raspberry Pi ==="
+# Paleta ANSI
+G="\033[1;32m"
+Y="\033[1;33m"
+C="\033[1;36m"
+R="\033[1;31m"
+W="\033[1;37m"
+D="\033[0;90m"
+NC="\033[0m"
 
-# 1. Instalar dependencias necesarias (Chromium y ocultador de cursor)
-sudo apt update
-sudo apt install -y chromium-browser unclutter
+clear
+cat << "BANNER"
+  _    _   _____   _____     ____   _____   _       _                  _____  
+ | |  | | |  __ \ |  __ \   |  _ \ |_   _| | |     | |        /\      |  __ \ 
+ | |__| | |  | || |__) |  | |_) |  | |   | |     | |       /  \     | |__) |
+ |  __  | | |  | ||  ___/   |  _ <   | |   | |     | |      / /\ \    |  _  / 
+ | |  | | | |__| || |       | |_) | _| |_  | |____ | |____ / ____ \   | | \ \ 
+ |_|  |_| |_____/ |_|       |____/ |_____| |______||______/_/    \_\  |_|  \_\
 
-# 2. Obtener ruta absoluta del proyecto
+                               EST. 1985 · QUIOSCO NFC
+BANNER
+echo -e "${D}================================================================${NC}"
+echo -e "${Y}▶ INSTALADOR DE QUIOSCO AUTOMATIZADO${NC}"
+echo -e "${D}================================================================${NC}\n"
+
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOG_FILE="/tmp/hdp_install.log"
+> "$LOG_FILE"
 
-# 3. Crear script de inicio para el Kiosk
-cat << LAUNCHER > "$PROJECT_DIR/start-kiosk.sh"
+run_step() {
+  local step_num="$1"
+  local title="$2"
+  local cmd="$3"
+  local spin=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+  
+  eval "$cmd" >> "$LOG_FILE" 2>&1 &
+  local pid=$!
+  local i=0
+  
+  while kill -0 $pid 2>/dev/null; do
+    i=$(( (i+1) % 10 ))
+    echo -ne "\r${C}[${step_num}/5]${NC} ${Y}${spin[$i]}${NC} ${W}${title}...${NC}"
+    sleep 0.1
+  done
+  
+  wait $pid
+  local exit_code=$?
+  if [ $exit_code -eq 0 ]; then
+    echo -e "\r${C}[${step_num}/5]${NC} ${G}✔${NC} ${W}${title}${NC} ${G}[OK]${NC}"
+  else
+    echo -e "\r${C}[${step_num}/5]${NC} ${R}✖${NC} ${W}${title}${NC} ${R}[FALLÓ]${NC}"
+    echo -e "\n${R}Últimas líneas del registro de error:${NC}"
+    tail -n 12 "$LOG_FILE"
+    exit 1
+  fi
+}
+
+run_step 1 "Actualizando repositorios APT" "sudo apt update -y"
+run_step 2 "Instalando Chromium y Unclutter" "sudo apt install -y chromium-browser unclutter"
+run_step 3 "Creando entorno Python e instalando dependencias" "
+  if [ ! -d '$PROJECT_DIR/venv' ]; then
+    python3 -m venv '$PROJECT_DIR/venv'
+  fi
+  '$PROJECT_DIR/venv/bin/pip' install --upgrade pip
+  '$PROJECT_DIR/venv/bin/pip' install -r '$PROJECT_DIR/requirements.txt'
+"
+run_step 4 "Generando lanzador start-kiosk.sh" "
+cat << 'LAUNCHER' > '$PROJECT_DIR/start-kiosk.sh'
 #!/usr/bin/env bash
-# Desactivar protector de pantalla y suspensión
 xset s off
 xset -dpms
 xset s noblank
 
-# Ocultar puntero del mouse
 unclutter -idle 0.5 -root &
 
-# Iniciar servidor web estático local ultraligero nativo
-cd "$PROJECT_DIR"
-python3 -m http.server 8080 &
+pkill -f 'server.py' 2>/dev/null || true
 
-# Esperar a que levante el servidor local
-sleep 2
+cd '$PROJECT_DIR'
+'$PROJECT_DIR/venv/bin/python3' '$PROJECT_DIR/server/server.py' &
 
-# Lanzar Chromium en modo Kiosk optimizado para Pi Zero 2W
+sleep 3
+
 chromium-browser --kiosk \
   --noerrdialogs \
   --disable-infobars \
@@ -40,21 +92,51 @@ chromium-browser --kiosk \
   --check-for-update-interval=31536000 \
   http://localhost:8080/
 LAUNCHER
+chmod +x '$PROJECT_DIR/start-kiosk.sh'
+"
+run_step 5 "Registrando autoarranque del sistema" "
+mkdir -p '$HOME/.config/autostart'
+cat << 'AUTO' > '$HOME/.config/autostart/kiosk.desktop'
+[Desktop Entry]
+Type=Application
+Name=HDP Kiosk
+Exec=$PROJECT_DIR/start-kiosk.sh
+X-GNOME-Autostart-enabled=true
+AUTO
+"
 
-chmod +x "$PROJECT_DIR/start-kiosk.sh"
+echo -e "\n${D}----------------------------------------------------------------${NC}"
+echo -e "${Y}▶ VERIFICANDO INTEGRIDAD DEL SISTEMA${NC}"
+echo -e "${D}----------------------------------------------------------------${NC}"
 
-# 4. Configurar autoarranque en el entorno de escritorio de Raspberry Pi OS
-AUTOSTART_DIR="$HOME/.config/lxsession/LXDE-pi"
-mkdir -p "$AUTOSTART_DIR"
+CHECK_COUNT=0
+TOTAL_CHECKS=6
 
-AUTOSTART_FILE="$AUTOSTART_DIR/autostart"
-if [ ! -f "$AUTOSTART_FILE" ]; then
-    touch "$AUTOSTART_FILE"
+check_item() {
+  local name="$1"
+  local cmd="$2"
+  if eval "$cmd" > /dev/null 2>&1; then
+    echo -e "  ${G}✔${NC} $name ${D}[OK]${NC}"
+    ((CHECK_COUNT++))
+  else
+    echo -e "  ${R}✖${NC} $name ${D}[FALLÓ]${NC}"
+  fi
+}
+
+check_item "Navegador Chromium" "which chromium-browser"
+check_item "Ocultador de cursor (unclutter)" "which unclutter"
+check_item "Entorno virtual Python" "test -f '$PROJECT_DIR/venv/bin/python3'"
+check_item "FastAPI Framework" "'$PROJECT_DIR/venv/bin/python3' -c 'import fastapi'"
+check_item "Servidor ASGI Uvicorn" "'$PROJECT_DIR/venv/bin/python3' -c 'import uvicorn'"
+check_item "Base de datos y esquema" "test -f '$PROJECT_DIR/db/schema.sql'"
+
+echo -e "\n${D}================================================================${NC}"
+if [ "$CHECK_COUNT" -eq "$TOTAL_CHECKS" ]; then
+  echo -e "${G}✔ [$CHECK_COUNT/$TOTAL_CHECKS] TODOS LOS COMPONENTES INSTALADOS Y LISTOS${NC}"
+  echo -e "${D}================================================================${NC}"
+  echo -e "\n${W}Todo configurado. Para iniciar el quiosco ejecuta:${NC}"
+  echo -e "${C}sudo reboot${NC}\n"
+else
+  echo -e "${R}⚠ [$CHECK_COUNT/$TOTAL_CHECKS] ALGUNOS COMPONENTES FALLARON${NC}"
+  echo -e "${D}================================================================${NC}\n"
 fi
-
-# Evitar duplicar la línea si se ejecuta varias veces
-sed -i '\|start-kiosk.sh|d' "$AUTOSTART_FILE"
-echo "@$PROJECT_DIR/start-kiosk.sh" >> "$AUTOSTART_FILE"
-
-echo "=== Instalación completada con éxito ==="
-echo "Al reiniciar la Raspberry Pi, el quiosco arrancará automáticamente a pantalla completa."
