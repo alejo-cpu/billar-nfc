@@ -21,7 +21,7 @@ cat << 'BANNER'
                          EST. 1985 · BILLAR NFC
 BANNER
 echo -e "${D}================================================================${NC}"
-echo -e "${Y}▶ INSTALADOR DE QUIOSCO AUTOMATIZADO ${NC}"
+echo -e "${Y}▶ INSTALADOR DE QUIOSCO AUTOMATIZADO${NC}"
 echo -e "${D}================================================================${NC}\n"
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -40,63 +40,71 @@ run_step() {
   
   while kill -0 $pid 2>/dev/null; do
     i=$(( (i+1) % 10 ))
-    echo -ne "\r${C}[${step_num}/7]${NC} ${Y}${spin[$i]}${NC} ${W}${title}...${NC}"
+    echo -ne "\r${C}[${step_num}/6]${NC} ${Y}${spin[$i]}${NC} ${W}${title}...${NC}"
     sleep 0.1
   done
   
   wait $pid
   local exit_code=$?
   if [ $exit_code -eq 0 ]; then
-    echo -e "\r${C}[${step_num}/7]${NC} ${G}✔${NC} ${W}${title}${NC} ${G}[OK]${NC}"
+    echo -e "\r${C}[${step_num}/6]${NC} ${G}✔${NC} ${W}${title}${NC} ${G}[OK]${NC}"
   else
-    echo -e "\r${C}[${step_num}/7]${NC} ${R}✖${NC} ${W}${title}${NC} ${R}[FALLÓ]${NC}"
+    echo -e "\r${C}[${step_num}/6]${NC} ${R}✖${NC} ${W}${title}${NC} ${R}[FALLÓ]${NC}"
     echo -e "\n${R}Últimas líneas del registro de error:${NC}"
     tail -n 12 "$LOG_FILE"
     exit 1
   fi
 }
 
-run_step 1 "Limpiando gestores de contraseñas de Chromium" "rm -rf '$HOME/.local/share/keyrings' 2>/dev/null || true"
-run_step 2 "Configurando motor gráfico X11 nativo" "sudo raspi-config nonint do_wayland W1 2>/dev/null || true"
-run_step 3 "Actualizando repositorios APT" "sudo apt update -y"
-run_step 4 "Instalando Chromium, Unclutter y Xdotool" "sudo apt install -y chromium-browser unclutter xdotool"
-run_step 5 "Creando entorno Python e instalando dependencias" "
+# Paso 1: Si está en X11, detecta el compositor Wayland y lo activa
+run_step 1 "Verificando y forzando cambio de X11 a Wayland" "
+  if which labwc >/dev/null 2>&1; then
+    sudo raspi-config nonint do_wayland W3 2>/dev/null || true
+  elif which wayfire >/dev/null 2>&1; then
+    sudo raspi-config nonint do_wayland W2 2>/dev/null || true
+  else
+    sudo raspi-config nonint do_wayland W3 2>/dev/null || sudo raspi-config nonint do_wayland W2 2>/dev/null || sudo raspi-config nonint do_wayland 1 2>/dev/null || true
+  fi
+"
+
+run_step 2 "Instalando tema de cursor invisible" "
+  sudo mkdir -p /usr/share/icons/blank/cursors
+  echo -ne '\x00\x00\x00\x00' | sudo tee /usr/share/icons/blank/cursors/left_ptr >/dev/null
+  sudo cp /usr/share/icons/blank/cursors/left_ptr /usr/share/icons/blank/cursors/default
+  sudo cp /usr/share/icons/blank/cursors/left_ptr /usr/share/icons/blank/cursors/pointer
+  
+  sudo mkdir -p /usr/share/icons/default
+  echo -e '[Icon Theme]\nInherits=blank' | sudo tee /usr/share/icons/default/index.theme >/dev/null
+  mkdir -p '$HOME/.icons/default'
+  echo -e '[Icon Theme]\nInherits=blank' > '$HOME/.icons/default/index.theme'
+"
+
+run_step 3 "Actualizando repositorios e instalando Chromium" "
+  rm -rf '$HOME/.local/share/keyrings' 2>/dev/null || true
+  sudo apt update -y && sudo apt install -y chromium-browser
+"
+
+run_step 4 "Creando entorno Python e instalando dependencias" "
   if [ ! -d '$PROJECT_DIR/venv' ]; then
     python3 -m venv '$PROJECT_DIR/venv'
   fi
   '$PROJECT_DIR/venv/bin/pip' install --upgrade pip
   '$PROJECT_DIR/venv/bin/pip' install -r '$PROJECT_DIR/requirements.txt'
 "
-run_step 6 "Generando lanzador start-kiosk.sh de alto rendimiento" "
+
+run_step 5 "Generando lanzador start-kiosk.sh" "
 cat << 'LAUNCHER' > '$PROJECT_DIR/start-kiosk.sh'
 #!/usr/bin/env bash
-xset s off
-xset -dpms
-xset s noblank
-
-# Poner CPU en modo rendimiento (evita tirones de reloj al escanear)
-echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1 || true
-
-# Expulsar cursor del monitor
-which xdotool >/dev/null 2>&1 && xdotool mousemove 9999 9999 2>/dev/null || true
-unclutter -idle 0 -root &
 
 pkill -f 'server.py' 2>/dev/null || true
 
 cd '$PROJECT_DIR'
 '$PROJECT_DIR/venv/bin/python3' '$PROJECT_DIR/server/server.py' &
 
-(
-  for delay in 2 4 7; do
-    sleep \$delay
-    which xdotool >/dev/null 2>&1 && xdotool mousemove 9999 9999 2>/dev/null || true
-  done
-) &
-
 sleep 2
 
-# Chromium con rasterizado por GPU directo y consumo mínimo de RAM
 chromium-browser --kiosk \
+  --ozone-platform=wayland \
   --password-store=basic \
   --noerrdialogs \
   --disable-infobars \
@@ -109,15 +117,12 @@ chromium-browser --kiosk \
   --enable-gpu-rasterization \
   --enable-zero-copy \
   --renderer-process-limit=2 \
-  --disable-background-networking \
-  --disable-sync \
-  --disable-default-apps \
-  --memory-pressure-off \
   http://localhost:8080/
 LAUNCHER
 chmod +x '$PROJECT_DIR/start-kiosk.sh'
 "
-run_step 7 "Registrando autoarranque del sistema" "
+
+run_step 6 "Registrando autoarranque del sistema" "
 mkdir -p '$HOME/.config/autostart'
 cat << 'AUTO' > '$HOME/.config/autostart/kiosk.desktop'
 [Desktop Entry]
@@ -133,7 +138,7 @@ echo -e "${Y}▶ VERIFICANDO INTEGRIDAD DEL SISTEMA${NC}"
 echo -e "${D}----------------------------------------------------------------${NC}"
 
 CHECK_COUNT=0
-TOTAL_CHECKS=7
+TOTAL_CHECKS=5
 
 check_item() {
   local name="$1"
@@ -147,18 +152,16 @@ check_item() {
 }
 
 check_item "Navegador Chromium" "which chromium-browser"
-check_item "Ocultador de cursor (unclutter)" "which unclutter"
-check_item "Simulador de puntero (xdotool)" "which xdotool"
+check_item "Tema de cursor transparente" "test -f /usr/share/icons/default/index.theme"
 check_item "Entorno virtual Python" "test -f '$PROJECT_DIR/venv/bin/python3'"
 check_item "FastAPI Framework" "'$PROJECT_DIR/venv/bin/python3' -c 'import fastapi'"
 check_item "Servidor ASGI Uvicorn" "'$PROJECT_DIR/venv/bin/python3' -c 'import uvicorn'"
-check_item "Base de datos y esquema" "test -f '$PROJECT_DIR/db/schema.sql'"
 
 echo -e "\n${D}================================================================${NC}"
 if [ "$CHECK_COUNT" -eq "$TOTAL_CHECKS" ]; then
-  echo -e "${G}✔ [$CHECK_COUNT/$TOTAL_CHECKS] TODOS LOS COMPONENTES INSTALADOS Y LISTOS${NC}"
+  echo -e "${G}✔ [$CHECK_COUNT/$TOTAL_CHECKS] CONFIGURACIÓN LISTA${NC}"
   echo -e "${D}================================================================${NC}"
-  echo -e "\n${W}Todo configurado. Para iniciar el quiosco optimizado ejecuta:${NC}"
+  echo -e "\n${W}Todo configurado. Para iniciar ejecuta:${NC}"
   echo -e "${C}sudo reboot${NC}\n"
 else
   echo -e "${R}⚠ [$CHECK_COUNT/$TOTAL_CHECKS] ALGUNOS COMPONENTES FALLARON${NC}"
