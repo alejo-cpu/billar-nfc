@@ -24,8 +24,7 @@
     }))
   );
 
-  const Home = () => h('div', { className: 'screen home' },
-    h(Placa),
+  const HomeContent = () => h('div', { className: 'screen-body home' },
     h('div', { className: 'kicker' }, 'HDP BILLAR · IDENTIFICADOR'),
     h('h1', { className: 'screen-title' }, 'Elige tu sensación'),
     h('p', { className: 'screen-sub' }, 'Cada taco tiene su carácter. Acercá el que tengas al lector para ver sus detalles.'),
@@ -75,13 +74,12 @@
     return [balanced, power];
   }
 
-  const Detail = ({ cue }) => {
+  const DetailContent = ({ cue }) => {
     const cueData = cue || DB.principal();
     const suggestions = getSuggestions(cueData);
     const cueColor = cueData.color || 'var(--hdp)';
 
-    return h('div', { className: 'screen detail' },
-      h(Placa),
+    return h('div', { className: 'screen-body detail' },
       h('div', { className: 'kicker' }, 'TACO ' + cueData.numero),
       h('div', { className: 'type-pill', style: { borderColor: cueColor, color: cueColor } }, cueData.sensacion),
       h('div', { className: 'type-tag' }, cueData.tag),
@@ -111,9 +109,7 @@
     );
   };
 
-  /* PANTALLA DE LECTURA CON DIV NATIVO DE CSS */
-  const Reading = () => h('div', { className: 'screen reading' },
-    h(Placa),
+  const ReadingContent = () => h('div', { className: 'screen-body reading' },
     h('div', { className: 'ringwrap' },
       h('div', { className: 'ring-spinner' }),
       h(NFC)
@@ -141,14 +137,19 @@
       const id = ++runId.current;
       setView('reading');
 
-      Promise.all([
-        DB.getCue(nfcCode),
-        new Promise(r => setTimeout(r, CONFIG.READ_MS))
-      ]).then(([foundCue]) => {
-        if (id === runId.current) {
-          setCue(foundCue);
-          setView('detail');
-        }
+      // 1. Obtener taco de inmediato (toma 2 ms)
+      DB.getCue(nfcCode).then(foundCue => {
+        if (id !== runId.current) return;
+
+        // 2. Pre-cargar el taco en memoria sin tocar la pantalla
+        setCue(foundCue);
+
+        // 3. Esperar el tiempo de giro visual
+        setTimeout(() => {
+          if (id === runId.current) {
+            setView('detail');
+          }
+        }, CONFIG.READ_MS);
       }).catch(() => {
         if (id === runId.current) setView('home');
       }).finally(resetIdle);
@@ -180,12 +181,13 @@
       return () => window.removeEventListener('keydown', onKey);
     }, [resetIdle, scan]);
 
-    /* ESTRUCTURA ORIGINAL: RENDER DIRECTO SIN CAPAS PERSISTENTES NI FANTASMAS */
+    /* PLACA SIEMPRE VIVA ARRIBA: CERO RE-DECODIFICACIÓN DE IMAGEN */
     return h('div', { className: 'stage' + (standby ? ' standby' : '') },
       h('div', { className: 'frame' },
-        view === 'home' && h(Home),
-        view === 'reading' && h(Reading),
-        view === 'detail' && h(Detail, { cue: cue })
+        h(Placa),
+        view === 'home' && h(HomeContent),
+        view === 'reading' && h(ReadingContent),
+        view === 'detail' && h(DetailContent, { cue: cue })
       ),
       h('div', { className: 'sleep' })
     );
