@@ -17,7 +17,7 @@ cat << 'BANNER'
  | |  | | |__| | |       | |_) |_| |_| |____| |____ / ____ \| | \ \ 
  |_|  |_|_____/|_|       |____/|_____|______|______/_/    \_\_|  \_\
 
-                        Alejo Corona · BILLAR NFC
+                         EST. 1985 · BILLAR NFC
 BANNER
 echo -e "${D}================================================================${NC}"
 echo -e "${Y}▶ INSTALADOR DE QUIOSCO AUTOMATIZADO${NC}"
@@ -55,12 +55,12 @@ run_step() {
   fi
 }
 
-run_step 1 "Configurando GPU a 128 MB" "
-  sudo raspi-config nonint do_memory_split 128 2>/dev/null || true
+run_step 1 "Configurando GPU a 256 MB" "
+  sudo raspi-config nonint do_memory_split 256 2>/dev/null || true
   for cfg in /boot/config.txt /boot/firmware/config.txt; do
     if [ -f \"\$cfg\" ]; then
       sudo sed -i '/^gpu_mem=/d' \"\$cfg\"
-      echo 'gpu_mem=128' | sudo tee -a \"\$cfg\" >/dev/null
+      echo 'gpu_mem=256' | sudo tee -a \"\$cfg\" >/dev/null
     fi
   done
 "
@@ -86,7 +86,7 @@ UNIT
 run_step 3 "Desactivando Swap y servicios innecesarios" "
   sudo dphys-swapfile swapoff 2>/dev/null || true
   sudo systemctl disable dphys-swapfile 2>/dev/null || true
-  sudo systemctl disable --now cups cups-browsed bluetooth avahi-daemon apt-daily.timer apt-daily-upgrade.timer man-db.timer 2>/dev/null || true
+  sudo systemctl disable --now cups cups-browsed bluetooth apt-daily.timer apt-daily-upgrade.timer man-db.timer 2>/dev/null || true
 "
 
 run_step 4 "Instalando cursor binario invisible" "

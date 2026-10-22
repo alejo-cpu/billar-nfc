@@ -18,7 +18,7 @@ sleep 1.5
 
 mkdir -p /dev/shm/chromium-cache
 
-nice -n -10 chromium-browser --kiosk \
+chromium-browser --kiosk \
   --touch-events=enabled \
   --password-store=basic \
   --noerrdialogs \
@@ -35,6 +35,7 @@ nice -n -10 chromium-browser --kiosk \
   --disable-default-apps \
   --disable-breakpad \
   --disable-features=Translate,OptimizationHints,MediaRouter \
+  --use-gl=egl \
   --enable-gpu-rasterization \
   --enable-zero-copy \
   --renderer-process-limit=1 \

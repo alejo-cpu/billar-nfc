@@ -235,10 +235,11 @@ html, body {
   50% { transform: translate3d(0, 8px, 0); }
 }
 
-/* Lectura */
+/* Lectura con aislamiento */
 .screen-body#view-reading {
   justify-content: center;
   gap: 3vh;
+  contain: layout paint;
 }
 
 .ringwrap {
