@@ -6,6 +6,16 @@
   <title>HDP Billar · Gestión</title>
   <link rel="stylesheet" href="css/styles.css">
   <style>
+    /* Restaurar el mouse para el panel de administración */
+    *, html, body {
+      cursor: auto !important;
+    }
+    button, .btn, select, .badge, [type="button"], [type="submit"] {
+      cursor: pointer !important;
+    }
+    input[type="text"], input[type="password"], textarea {
+      cursor: text !important;
+    }
     body {
       overflow-y: auto !important;
       -webkit-user-select: auto !important;
@@ -137,7 +147,6 @@
     }
     .actions { display: flex; gap: 8px; }
 
-    /* Modales */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -164,7 +173,6 @@
       overflow-y: auto;
     }
 
-    /* Contenedor adaptativo sin corte inferior */
     .modal-box-split {
       display: grid;
       grid-template-columns: 1fr 340px;
@@ -219,7 +227,6 @@
     }
     .form-row { display: flex; gap: 10px; }
     .form-row .form-group { flex: 1; }
-
 
     #f_ideal_custom{
       width: 100%;

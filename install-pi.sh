@@ -73,7 +73,8 @@ xset s off
 xset -dpms
 xset s noblank
 
-unclutter -idle 0.5 -root &
+# Ocultar puntero inmediatamente sin delay
+unclutter -idle 0 -root &
 
 pkill -f 'server.py' 2>/dev/null || true
 
