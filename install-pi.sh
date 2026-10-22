@@ -57,6 +57,7 @@ run_step() {
 }
 
 run_step 1 "Actualizando repositorios APT" "sudo apt update -y"
+run_step 0 "Desactivando gestores de contraseñas del sistema" "rm -rf '$HOME/.local/share/keyrings' 2>/dev/null || true"
 run_step 2 "Instalando Chromium y Unclutter" "sudo apt install -y chromium-browser unclutter"
 run_step 3 "Creando entorno Python e instalando dependencias" "
   if [ ! -d '$PROJECT_DIR/venv' ]; then
@@ -82,6 +83,7 @@ cd '$PROJECT_DIR'
 sleep 3
 
 chromium-browser --kiosk \
+  --password-store=basic \
   --noerrdialogs \
   --disable-infobars \
   --disable-translate \
