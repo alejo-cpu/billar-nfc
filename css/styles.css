@@ -31,26 +31,24 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  cursor: none !important;
 }
 
-#btnSubmitTaco{
+#btnSubmitTaco {
   width: 100%;
   justify-content: center;
 }
 
-#c_ideal{
+#c_ideal {
   width: 100%;
 }
 
-#btnSaveCat{
+#btnSaveCat {
   width: 100%;
 }
 
 html, body, #root {
   height: 100%;
   width: 100%;
-  cursor: none !important;
 }
 
 body {
@@ -61,7 +59,6 @@ body {
   -webkit-user-select: none;
   user-select: none;
   overflow: hidden;
-  cursor: none !important;
 }
 
 .stage {
@@ -74,6 +71,7 @@ body {
   background-color: #020203;
 }
 
+/* Medidas dinámicas 9:16 intactas para máxima adaptabilidad */
 .frame {
   height: 100vh;
   height: 100dvh;
@@ -83,31 +81,22 @@ body {
   background-color: #08090b;
 }
 
+/* Pantallas inactivas apagadas para liberar 100% el CPU/GPU */
 .screen {
-  position: absolute;
-  inset: 0;
+  display: none;
   width: 100%;
   height: 100%;
-  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
   padding: 2.6vh 2.5vh;
-  z-index: 1;
 }
 
-.screen.home {
-  z-index: 2;
+.screen.active {
+  display: flex;
 }
 
-.screen.reading {
-  z-index: 3;
-}
-
-.screen.detail {
-  z-index: 4;
-}
-
+/* Placa limpia sin sombras gaussianas */
 .placa {
   position: relative;
   width: 94%;
@@ -247,17 +236,16 @@ body {
   color: var(--hdp);
 }
 
+/* Animación de flecha liviana: traslación simple sin capas VRAM pesadas */
 .arrow {
   width: 5vh;
   height: auto;
-  will-change: transform;
-  transform: translate3d(0, 0, 0);
   animation: bob 1.6s ease-in-out infinite;
 }
 
 @keyframes bob {
-  0%, 100% { transform: translate3d(0, 0, 0); }
-  50% { transform: translate3d(0, 8px, 0); }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
 }
 
 .type-pill {
@@ -426,15 +414,14 @@ body {
   z-index: 2;
 }
 
-/* Rueda fina que gira serena a velocidad continua */
+/* Spinner ultra-liviano: arco estático que rota sin stroke-dasharray */
 .ring-svg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  will-change: transform;
-  animation: spinRing 1.3s linear infinite;
-  transform-origin: center center;
+  animation: spinRing 1s linear infinite;
+  transform-origin: 50% 50%;
 }
 
 .ring-track {
@@ -443,14 +430,11 @@ body {
 
 .ring-blade {
   stroke: var(--hdp);
-  stroke-linecap: round;
-  stroke-dasharray: 45 125;
-  stroke-dashoffset: 0;
 }
 
 @keyframes spinRing {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .reading-txt {
