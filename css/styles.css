@@ -27,7 +27,6 @@
   --f-pixel: 'Press Start 2P', ui-monospace, 'Courier New', monospace;
 }
 
-/* ANIQUILAR CUALQUIER TRANSICIÓN EN TODO EL DOM */
 *, *::before, *::after, html, body, #root {
   margin: 0;
   padding: 0;
@@ -74,25 +73,38 @@ body {
   background-color: #08090b;
 }
 
-/* CORTE SECO INSTANTÁNEO EN 0 MS */
+/* SISTEMA APILADO CON FONDO SÓLIDO (ELIMINA EL VACÍO NEGRO ENTRE ESCENAS) */
 .screen {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  display: none;
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
   padding: 2.6vh 2.5vh;
+  background-color: #08090b;
+  opacity: 0;
+  pointer-events: none;
 }
 
+.screen.home { z-index: 1; }
+.screen.reading { z-index: 2; }
+.screen.detail { z-index: 3; }
+
+/* La pantalla activa se muestra de golpe tapando la anterior */
 .screen.active {
-  display: flex;
+  opacity: 1;
+  pointer-events: auto;
 }
 
+/* Pausar animaciones en pantallas ocultas para liberar 100% la CPU */
 .screen:not(.active) .arrow {
-  animation: none !important;
+  animation-play-state: paused !important;
+}
+.screen:not(.active) .ring-spinner {
+  animation-play-state: paused !important;
 }
 
 .placa {
@@ -234,7 +246,7 @@ body {
   color: var(--hdp);
 }
 
-/* ANIMACIÓN 1: FLECHA EN 2D PURO SIN 3D PESADO */
+/* ANIMACIÓN 1: FLECHA 2D LIVIANA */
 .arrow {
   width: 5vh;
   height: auto;
@@ -389,7 +401,7 @@ body {
   flex: none;
 }
 
-/* ANIMACIÓN 2: CÍRCULO GIRANDO */
+/* ANIMACIÓN 2: CÍRCULO BLINDADO A 60 FPS */
 .ringwrap {
   position: relative;
   width: 96px;
@@ -408,12 +420,14 @@ body {
   border: 4px solid rgba(240, 201, 40, 0.15);
   border-top: 4px solid var(--hdp);
   border-right: 4px solid var(--hdp);
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
   animation: spinRing 0.8s linear infinite;
 }
 
 @keyframes spinRing {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  100% { transform: translate3d(0, 0, 0) rotate(360deg); }
 }
 
 .nfc {
