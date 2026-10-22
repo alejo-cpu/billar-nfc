@@ -71,7 +71,7 @@ body {
   background-color: #020203;
 }
 
-/* Medidas dinámicas 9:16 intactas para máxima adaptabilidad */
+/* Medidas dinámicas 9:16 intactas */
 .frame {
   height: 100vh;
   height: 100dvh;
@@ -81,22 +81,17 @@ body {
   background-color: #08090b;
 }
 
-/* Pantallas inactivas apagadas para liberar 100% el CPU/GPU */
+/* La pantalla activa se muestra normal */
 .screen {
-  display: none;
   width: 100%;
   height: 100%;
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
   padding: 2.6vh 2.5vh;
 }
 
-.screen.active {
-  display: flex;
-}
-
-/* Placa limpia sin sombras gaussianas */
 .placa {
   position: relative;
   width: 94%;
@@ -236,7 +231,6 @@ body {
   color: var(--hdp);
 }
 
-/* Animación de flecha liviana: traslación simple sin capas VRAM pesadas */
 .arrow {
   width: 5vh;
   height: auto;
@@ -414,7 +408,7 @@ body {
   z-index: 2;
 }
 
-/* Spinner ultra-liviano: arco estático que rota sin stroke-dasharray */
+/* Rueda delgada y fina */
 .ring-svg {
   position: absolute;
   inset: 0;

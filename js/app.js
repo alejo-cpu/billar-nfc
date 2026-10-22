@@ -111,13 +111,12 @@
     );
   };
 
-  // La rueda gira de forma permanente en GPU: grosor fino de 2px
   const Reading = () => h('div', { className: 'screen reading' },
     h(Placa),
     h('div', { className: 'ringwrap' },
       h('svg', { className: 'ring-svg', viewBox: '0 0 50 50' },
         h('circle', { className: 'ring-track', cx: 25, cy: 25, r: 20, fill: 'none', strokeWidth: 2 }),
-        h('circle', { className: 'ring-blade', cx: 25, cy: 25, r: 20, fill: 'none', strokeWidth: 2 })
+        h('path', { className: 'ring-blade', d: 'M 25 5 A 20 20 0 0 1 45 25', fill: 'none', strokeWidth: 2, strokeLinecap: 'round' })
       ),
       h(NFC)
     ),
@@ -144,14 +143,11 @@
       const id = ++runId.current;
       setView('reading');
 
-      // 1. Buscamos el taco de inmediato en memoria
-      // 2. Esperamos el tiempo sereno sin tocar nada de React
       Promise.all([
         DB.getCue(nfcCode),
         new Promise(r => setTimeout(r, CONFIG.READ_MS))
       ]).then(([foundCue]) => {
         if (id === runId.current) {
-          // Cambiamos datos y pantalla en un único pulso sincronizado
           setCue(foundCue);
           setView('detail');
         }
