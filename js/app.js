@@ -166,8 +166,9 @@
         
         if (e.key === 'Enter') {
           resetIdle();
-          if (buffer.length >= 2) {
-            scan(buffer);
+          const clean = buffer.trim();
+          if (clean.length >= 2) {
+            scan(clean);
           }
           buffer = '';
           return;
@@ -177,10 +178,10 @@
           buffer += e.key;
         }
 
-        // Si pasan más de 400ms sin teclas nuevas, limpia el buffer para evitar teclas accidentales
+        // 700ms de tolerancia para lectores USB en Raspberry Pi
         timer = setTimeout(() => {
           buffer = '';
-        }, 400);
+        }, 700);
       };
 
       window.addEventListener('keydown', onKey);
