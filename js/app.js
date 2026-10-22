@@ -111,12 +111,13 @@
     );
   };
 
+  // Rueda fina con strokeWidth de 2
   const Reading = ({ isActive }) => h('div', { className: 'screen reading' + (isActive ? ' active' : '') },
     h(Placa),
     h('div', { className: 'ringwrap' },
       h('svg', { className: 'ring-svg', viewBox: '0 0 50 50' },
-        h('circle', { className: 'ring-track', cx: 25, cy: 25, r: 20, fill: 'none', strokeWidth: 4 }),
-        h('circle', { className: 'ring-blade', cx: 25, cy: 25, r: 20, fill: 'none', strokeWidth: 4 })
+        h('circle', { className: 'ring-track', cx: 25, cy: 25, r: 20, fill: 'none', strokeWidth: 2 }),
+        h('circle', { className: 'ring-blade', cx: 25, cy: 25, r: 20, fill: 'none', strokeWidth: 2 })
       ),
       h(NFC)
     ),
@@ -143,28 +144,20 @@
       const id = ++runId.current;
       setView('reading');
 
-      // 1. Buscamos el taco y lo pre-cargamos en Detail de inmediato
-      const cuePromise = DB.getCue(nfcCode).then(c => {
+      // 1. La búsqueda en memoria se hace de inmediato en paralelo
+      // 2. Esperamos el tiempo justo sin tocar React durante el giro
+      Promise.all([
+        DB.getCue(nfcCode),
+        new Promise(r => setTimeout(r, CONFIG.READ_MS))
+      ]).then(([foundCue]) => {
         if (id === runId.current) {
-          setCue(c); // Detail se prepara en silencio por debajo
+          // Actualizamos los datos y la vista en un solo golpe limpio al final
+          setCue(foundCue);
+          setView('detail');
         }
-        return c;
-      });
-
-      // 2. Temporizador para una rotación serena de 1.3s
-      const timerPromise = new Promise(r => setTimeout(r, CONFIG.READ_MS));
-
-      // 3. Cuando se cumplen ambos, pasamos a Detail sin un solo milisegundo de lag
-      Promise.all([cuePromise, timerPromise])
-        .then(() => { 
-          if (id === runId.current) {
-            setView('detail'); 
-          } 
-        })
-        .catch(() => { 
-          if (id === runId.current) setView('home'); 
-        })
-        .finally(resetIdle);
+      }).catch(() => {
+        if (id === runId.current) setView('home');
+      }).finally(resetIdle);
     }, [resetIdle]);
 
     useEffect(() => {

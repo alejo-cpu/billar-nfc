@@ -56,7 +56,7 @@ run_step() {
   fi
 }
 
-run_step 1 "Verificando y forzando cambio de X11 a Wayland" "
+run_step 1 "Verificando motor gráfico Wayland" "
   if which labwc >/dev/null 2>&1; then
     sudo raspi-config nonint do_wayland W3 2>/dev/null || true
   elif which wayfire >/dev/null 2>&1; then
@@ -66,20 +66,17 @@ run_step 1 "Verificando y forzando cambio de X11 a Wayland" "
   fi
 "
 
-run_step 2 "Configurando compositor Labwc para ocultar cursor" "
-  sudo rm -rf /usr/share/icons/blank /usr/share/icons/default '$HOME/.icons/default' 2>/dev/null || true
+run_step 2 "Configurando compositor Labwc sin cursor" "
   mkdir -p '$HOME/.config/labwc'
-  echo 'XCURSOR_SIZE=1' > '$HOME/.config/labwc/environment'
   cat << 'XML' > '$HOME/.config/labwc/rc.xml'
 <?xml version=\"1.0\"?>
 <labwc_config>
-  <core>
-    <cursor>
-      <size>1</size>
-    </cursor>
-  </core>
+  <theme>
+    <cursorSize>1</cursorSize>
+  </theme>
 </labwc_config>
 XML
+  killall -HUP labwc 2>/dev/null || true
 "
 
 run_step 3 "Actualizando repositorios e instalando Chromium" "
@@ -109,7 +106,6 @@ cd '$PROJECT_DIR'
 
 sleep 2
 
-# Chromium directo en Wayland nativo, modo táctil sin cursor y sin pérdidas de frames
 chromium-browser --kiosk \
   --ozone-platform=wayland \
   --touch-events=enabled \
