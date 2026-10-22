@@ -24,10 +24,7 @@
     }))
   );
 
-  const Home = ({ isVisible }) => h('div', { 
-    className: 'screen home',
-    style: { display: isVisible ? 'flex' : 'none' }
-  },
+  const Home = ({ isActive }) => h('div', { className: 'screen home' + (isActive ? ' active' : '') },
     h(Placa),
     h('div', { className: 'kicker' }, 'HDP BILLAR · IDENTIFICADOR'),
     h('h1', { className: 'screen-title' }, 'Elige tu sensación'),
@@ -78,15 +75,12 @@
     return [balanced, power];
   }
 
-  const Detail = ({ cue, isVisible }) => {
+  const Detail = ({ cue, isActive }) => {
     const cueData = cue || DB.principal();
     const suggestions = getSuggestions(cueData);
     const cueColor = cueData.color || 'var(--hdp)';
 
-    return h('div', { 
-      className: 'screen detail',
-      style: { display: isVisible ? 'flex' : 'none' }
-    },
+    return h('div', { className: 'screen detail' + (isActive ? ' active' : '') },
       h(Placa),
       h('div', { className: 'kicker' }, 'TACO ' + cueData.numero),
       h('div', { className: 'type-pill', style: { borderColor: cueColor, color: cueColor } }, cueData.sensacion),
@@ -117,11 +111,7 @@
     );
   };
 
-  // Spinner circular en SVG acelerado por hardware
-  const Reading = ({ isVisible }) => h('div', { 
-    className: 'screen reading',
-    style: { display: isVisible ? 'flex' : 'none' }
-  },
+  const Reading = ({ isActive }) => h('div', { className: 'screen reading' + (isActive ? ' active' : '') },
     h(Placa),
     h('div', { className: 'ringwrap' },
       h('svg', { className: 'ring-svg', viewBox: '0 0 50 50' },
@@ -152,12 +142,22 @@
     const scan = useCallback(nfcCode => {
       const id = ++runId.current;
       setView('reading');
-      
-      const espera = new Promise(r => setTimeout(r, CONFIG.READ_MS));
-      Promise.all([DB.getCue(nfcCode), espera])
-        .then(([c]) => { 
-          if (id === runId.current) { 
-            setCue(c); 
+
+      // 1. Buscamos el taco y lo pre-cargamos en Detail de inmediato
+      const cuePromise = DB.getCue(nfcCode).then(c => {
+        if (id === runId.current) {
+          setCue(c); // Detail se prepara en silencio por debajo
+        }
+        return c;
+      });
+
+      // 2. Temporizador para una rotación serena de 1.3s
+      const timerPromise = new Promise(r => setTimeout(r, CONFIG.READ_MS));
+
+      // 3. Cuando se cumplen ambos, pasamos a Detail sin un solo milisegundo de lag
+      Promise.all([cuePromise, timerPromise])
+        .then(() => { 
+          if (id === runId.current) {
             setView('detail'); 
           } 
         })
@@ -204,9 +204,9 @@
 
     return h('div', { className: 'stage' + (standby ? ' standby' : '') },
       h('div', { className: 'frame' },
-        h(Home, { isVisible: view === 'home' }),
-        h(Reading, { isVisible: view === 'reading' }),
-        h(Detail, { cue: cue, isVisible: view === 'detail' })
+        h(Home, { isActive: view === 'home' }),
+        h(Reading, { isActive: view === 'reading' }),
+        h(Detail, { cue: cue, isActive: view === 'detail' })
       ),
       h('div', { className: 'sleep' })
     );
