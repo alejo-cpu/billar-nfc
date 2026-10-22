@@ -58,7 +58,7 @@ run_step() {
 
 run_step 1 "Limpiando gestores de contraseñas de Chromium" "rm -rf '$HOME/.local/share/keyrings' 2>/dev/null || true"
 run_step 2 "Actualizando repositorios APT" "sudo apt update -y"
-run_step 3 "Instalando Chromium y Unclutter" "sudo apt install -y chromium-browser unclutter"
+run_step 3 "Instalando Chromium, Unclutter y Xdotool" "sudo apt install -y chromium-browser unclutter xdotool"
 run_step 4 "Creando entorno Python e instalando dependencias" "
   if [ ! -d '$PROJECT_DIR/venv' ]; then
     python3 -m venv '$PROJECT_DIR/venv'
@@ -66,20 +66,31 @@ run_step 4 "Creando entorno Python e instalando dependencias" "
   '$PROJECT_DIR/venv/bin/pip' install --upgrade pip
   '$PROJECT_DIR/venv/bin/pip' install -r '$PROJECT_DIR/requirements.txt'
 "
-run_step 5 "Generando lanzador start-kiosk.sh sin cursor" "
+run_step 5 "Generando lanzador start-kiosk.sh con auto-ocultamiento" "
 cat << 'LAUNCHER' > '$PROJECT_DIR/start-kiosk.sh'
 #!/usr/bin/env bash
 xset s off
 xset -dpms
 xset s noblank
 
-# Ocultar puntero inmediatamente sin delay
+# 1. Teletransportar inmediatamente el cursor fuera de la pantalla
+which xdotool >/dev/null 2>&1 && xdotool mousemove 9999 9999 2>/dev/null || true
+
+# 2. Iniciar unclutter sin tiempo de espera
 unclutter -idle 0 -root &
 
 pkill -f 'server.py' 2>/dev/null || true
 
 cd '$PROJECT_DIR'
 '$PROJECT_DIR/venv/bin/python3' '$PROJECT_DIR/server/server.py' &
+
+# 3. Disparo en segundo plano: apenas abra Chromium, expulsa el cursor otra vez
+(
+  for delay in 2 4 7; do
+    sleep \$delay
+    which xdotool >/dev/null 2>&1 && xdotool mousemove 9999 9999 2>/dev/null || true
+  done
+) &
 
 sleep 3
 
@@ -113,7 +124,7 @@ echo -e "${Y}▶ VERIFICANDO INTEGRIDAD DEL SISTEMA${NC}"
 echo -e "${D}----------------------------------------------------------------${NC}"
 
 CHECK_COUNT=0
-TOTAL_CHECKS=6
+TOTAL_CHECKS=7
 
 check_item() {
   local name="$1"
@@ -128,6 +139,7 @@ check_item() {
 
 check_item "Navegador Chromium" "which chromium-browser"
 check_item "Ocultador de cursor (unclutter)" "which unclutter"
+check_item "Simulador de puntero (xdotool)" "which xdotool"
 check_item "Entorno virtual Python" "test -f '$PROJECT_DIR/venv/bin/python3'"
 check_item "FastAPI Framework" "'$PROJECT_DIR/venv/bin/python3' -c 'import fastapi'"
 check_item "Servidor ASGI Uvicorn" "'$PROJECT_DIR/venv/bin/python3' -c 'import uvicorn'"
