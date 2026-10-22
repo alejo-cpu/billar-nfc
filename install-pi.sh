@@ -10,15 +10,15 @@ D="\033[0;90m"
 NC="\033[0m"
 
 clear
-cat << "BANNER"
-  _    _   _____   _____     ____   _____   _       _                  _____  
- | |  | | |  __ \ |  __ \   |  _ \ |_   _| | |     | |        /\      |  __ \ 
- | |__| | |  | || |__) |  | |_) |  | |   | |     | |       /  \     | |__) |
- |  __  | | |  | ||  ___/   |  _ <   | |   | |     | |      / /\ \    |  _  / 
- | |  | | | |__| || |       | |_) | _| |_  | |____ | |____ / ____ \   | | \ \ 
- |_|  |_| |_____/ |_|       |____/ |_____| |______||______/_/    \_\  |_|  \_\
+cat << 'BANNER'
+  _    _ _____  _____     ____  _____ _      _               _____  
+ | |  | |  __ \|  __ \   |  _ \|_   _| |    | |        /\   |  __ \ 
+ | |__| | |  | | |__) |  | |_) | | | | |    | |       /  \  | |__) |
+ |  __  | |  | |  ___/   |  _ <  | | | |    | |      / /\ \ |  _  / 
+ | |  | | |__| | |       | |_) |_| |_| |____| |____ / ____ \| | \ \ 
+ |_|  |_|_____/|_|       |____/|_____|______|______/_/    \_\_|  \_\
 
-                               EST. 1985 · QUIOSCO NFC
+                         EST. 1985 · QUIOSCO NFC
 BANNER
 echo -e "${D}================================================================${NC}"
 echo -e "${Y}▶ INSTALADOR DE QUIOSCO AUTOMATIZADO${NC}"
@@ -40,33 +40,33 @@ run_step() {
   
   while kill -0 $pid 2>/dev/null; do
     i=$(( (i+1) % 10 ))
-    echo -ne "\r${C}[${step_num}/5]${NC} ${Y}${spin[$i]}${NC} ${W}${title}...${NC}"
+    echo -ne "\r${C}[${step_num}/6]${NC} ${Y}${spin[$i]}${NC} ${W}${title}...${NC}"
     sleep 0.1
   done
   
   wait $pid
   local exit_code=$?
   if [ $exit_code -eq 0 ]; then
-    echo -e "\r${C}[${step_num}/5]${NC} ${G}✔${NC} ${W}${title}${NC} ${G}[OK]${NC}"
+    echo -e "\r${C}[${step_num}/6]${NC} ${G}✔${NC} ${W}${title}${NC} ${G}[OK]${NC}"
   else
-    echo -e "\r${C}[${step_num}/5]${NC} ${R}✖${NC} ${W}${title}${NC} ${R}[FALLÓ]${NC}"
+    echo -e "\r${C}[${step_num}/6]${NC} ${R}✖${NC} ${W}${title}${NC} ${R}[FALLÓ]${NC}"
     echo -e "\n${R}Últimas líneas del registro de error:${NC}"
     tail -n 12 "$LOG_FILE"
     exit 1
   fi
 }
 
-run_step 1 "Actualizando repositorios APT" "sudo apt update -y"
-run_step 0 "Desactivando gestores de contraseñas del sistema" "rm -rf '$HOME/.local/share/keyrings' 2>/dev/null || true"
-run_step 2 "Instalando Chromium y Unclutter" "sudo apt install -y chromium-browser unclutter"
-run_step 3 "Creando entorno Python e instalando dependencias" "
+run_step 1 "Limpiando gestores de contraseñas de Chromium" "rm -rf '$HOME/.local/share/keyrings' 2>/dev/null || true"
+run_step 2 "Actualizando repositorios APT" "sudo apt update -y"
+run_step 3 "Instalando Chromium y Unclutter" "sudo apt install -y chromium-browser unclutter"
+run_step 4 "Creando entorno Python e instalando dependencias" "
   if [ ! -d '$PROJECT_DIR/venv' ]; then
     python3 -m venv '$PROJECT_DIR/venv'
   fi
   '$PROJECT_DIR/venv/bin/pip' install --upgrade pip
   '$PROJECT_DIR/venv/bin/pip' install -r '$PROJECT_DIR/requirements.txt'
 "
-run_step 4 "Generando lanzador start-kiosk.sh" "
+run_step 5 "Generando lanzador start-kiosk.sh sin cursor" "
 cat << 'LAUNCHER' > '$PROJECT_DIR/start-kiosk.sh'
 #!/usr/bin/env bash
 xset s off
@@ -97,7 +97,7 @@ chromium-browser --kiosk \
 LAUNCHER
 chmod +x '$PROJECT_DIR/start-kiosk.sh'
 "
-run_step 5 "Registrando autoarranque del sistema" "
+run_step 6 "Registrando autoarranque del sistema" "
 mkdir -p '$HOME/.config/autostart'
 cat << 'AUTO' > '$HOME/.config/autostart/kiosk.desktop'
 [Desktop Entry]
