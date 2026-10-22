@@ -24,7 +24,7 @@
     }))
   );
 
-  const Home = () => h(React.Fragment, null,
+  const Home = () => h('div', { className: 'screen home' },
     h(Placa),
     h('div', { className: 'kicker' }, 'HDP BILLAR · IDENTIFICADOR'),
     h('h1', { className: 'screen-title' }, 'Elige tu sensación'),
@@ -80,7 +80,7 @@
     const suggestions = getSuggestions(cueData);
     const cueColor = cueData.color || 'var(--hdp)';
 
-    return h(React.Fragment, null,
+    return h('div', { className: 'screen detail' },
       h(Placa),
       h('div', { className: 'kicker' }, 'TACO ' + cueData.numero),
       h('div', { className: 'type-pill', style: { borderColor: cueColor, color: cueColor } }, cueData.sensacion),
@@ -111,9 +111,14 @@
     );
   };
 
-  const Reading = () => h('div', { className: 'ringwrap' },
-    h('div', { className: 'ring-spinner' }),
-    h(NFC)
+  /* PANTALLA DE LECTURA CON DIV NATIVO DE CSS */
+  const Reading = () => h('div', { className: 'screen reading' },
+    h(Placa),
+    h('div', { className: 'ringwrap' },
+      h('div', { className: 'ring-spinner' }),
+      h(NFC)
+    ),
+    h('p', { className: 'reading-txt' }, 'Leyendo taco…')
   );
 
   function App() {
@@ -136,17 +141,14 @@
       const id = ++runId.current;
       setView('reading');
 
-      DB.getCue(nfcCode).then(foundCue => {
-        if (id !== runId.current) return;
-
-        setTimeout(() => {
-          if (id === runId.current) {
-            setCue(foundCue);
-            requestAnimationFrame(() => {
-              setView('detail');
-            });
-          }
-        }, CONFIG.READ_MS);
+      Promise.all([
+        DB.getCue(nfcCode),
+        new Promise(r => setTimeout(r, CONFIG.READ_MS))
+      ]).then(([foundCue]) => {
+        if (id === runId.current) {
+          setCue(foundCue);
+          setView('detail');
+        }
       }).catch(() => {
         if (id === runId.current) setView('home');
       }).finally(resetIdle);
@@ -178,19 +180,12 @@
       return () => window.removeEventListener('keydown', onKey);
     }, [resetIdle, scan]);
 
+    /* ESTRUCTURA ORIGINAL: RENDER DIRECTO SIN CAPAS PERSISTENTES NI FANTASMAS */
     return h('div', { className: 'stage' + (standby ? ' standby' : '') },
       h('div', { className: 'frame' },
-        h('div', { className: 'screen home' + (view === 'home' ? ' active' : '') },
-          h(Home)
-        ),
-        h('div', { className: 'screen reading' + (view === 'reading' ? ' active' : '') },
-          h(Placa),
-          h(Reading),
-          h('p', { className: 'reading-txt' }, 'Leyendo taco…')
-        ),
-        h('div', { className: 'screen detail' + (view === 'detail' ? ' active' : '') },
-          h(Detail, { cue: cue })
-        )
+        view === 'home' && h(Home),
+        view === 'reading' && h(Reading),
+        view === 'detail' && h(Detail, { cue: cue })
       ),
       h('div', { className: 'sleep' })
     );

@@ -32,8 +32,6 @@
   padding: 0;
   box-sizing: border-box;
   cursor: none !important;
-  transition: none !important;
-  -webkit-font-smoothing: antialiased;
 }
 
 #btnSubmitTaco, #c_ideal, #btnSaveCat {
@@ -43,12 +41,14 @@
 html, body, #root {
   height: 100%;
   width: 100%;
-  background-color: #08090b;
 }
 
 body {
+  background-color: #060709;
   color: var(--text);
   font-family: var(--f-body);
+  -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
   user-select: none;
   overflow: hidden;
 }
@@ -60,7 +60,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #08090b;
+  background-color: #020203;
 }
 
 .frame {
@@ -72,7 +72,7 @@ body {
   background-color: #08090b;
 }
 
-/* TODAS LAS PANTALLAS SON CAPAS SÓLIDAS APILADAS */
+/* LA PANTALLA ORIGINAL: SIMPLE, DIRECTA, SIN CAPAS EXTRA */
 .screen {
   position: absolute;
   inset: 0;
@@ -83,40 +83,6 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 2.6vh 2.5vh;
-  background-color: #08090b;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-/* Home siempre existe de fondo */
-.screen.home {
-  z-index: 1;
-  visibility: visible;
-  pointer-events: auto;
-}
-
-/* Reading tapa a Home instantáneamente */
-.screen.reading {
-  z-index: 10;
-}
-
-/* Detail tapa a Reading instantáneamente */
-.screen.detail {
-  z-index: 20;
-}
-
-/* Al activarse se vuelve visible en 0 ms */
-.screen.active {
-  visibility: visible;
-  pointer-events: auto;
-}
-
-/* Pausar animaciones ocultas para dejar el procesador libre */
-.screen:not(.active) .arrow {
-  animation-play-state: paused !important;
-}
-.screen:not(.active) .ring-spinner {
-  animation-play-state: paused !important;
 }
 
 .placa {
@@ -258,7 +224,7 @@ body {
   color: var(--hdp);
 }
 
-/* FLECHA 2D LIVIANA */
+/* FLECHA: 2D LIMPIO SIN 3D */
 .arrow {
   width: 5vh;
   height: auto;
@@ -413,47 +379,50 @@ body {
   flex: none;
 }
 
-/* CÍRCULO EN CAPA DE COMPOSICIÓN AISLADA */
+/* PANTALLA DE LECTURA ORIGINAL */
+.reading { justify-content: center; }
+
 .ringwrap {
+  margin-top: 2.5vh;
   position: relative;
-  width: 96px;
-  height: 96px;
+  width: 80px;
+  height: 80px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: auto 0;
 }
 
+/* CÍRCULO EN CSS PURO: CERO VECTORES SVG */
 .ring-spinner {
-  width: 96px;
-  height: 96px;
+  width: 80px;
+  height: 80px;
   box-sizing: border-box;
   border-radius: 50%;
-  border: 4px solid rgba(240, 201, 40, 0.15);
-  border-top: 4px solid var(--hdp);
-  border-right: 4px solid var(--hdp);
-  animation: spinRing 0.8s linear infinite;
-  transform: translateZ(0);
+  border: 4px solid rgba(240, 201, 40, 0.18);
+  border-top-color: var(--hdp);
+  border-right-color: var(--hdp);
+  will-change: transform;
+  animation: spinRing 0.85s linear infinite;
 }
 
 @keyframes spinRing {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .nfc {
   position: absolute;
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   color: var(--hdp);
   pointer-events: none;
 }
 
 .reading-txt {
+  margin-top: 1.8vh;
   font-size: 1.8vh;
   color: var(--hdp);
   letter-spacing: .08em;
-  margin-bottom: 4vh;
 }
 
 .sleep {
