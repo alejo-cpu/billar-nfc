@@ -26,7 +26,6 @@ chromium-browser --kiosk \
   --noerrdialogs \
   --disable-infobars \
   --disable-translate \
-  --disable-features=Translate,OptimizationHints,MediaRouter,DialMediaRouteProvider,IsolateOrigins,site-per-process \
   --disable-pinch \
   --disable-session-crashed-bubble \
   --overscroll-history-navigation=0 \
@@ -37,12 +36,9 @@ chromium-browser --kiosk \
   --disable-extensions \
   --disable-default-apps \
   --disable-breakpad \
-  --disable-dev-shm-usage \
+  --disable-features=Translate,OptimizationHints,MediaRouter \
   --renderer-process-limit=1 \
-  --disable-site-isolation-trials \
   --disk-cache-dir=/tmp/chromium-cache \
-  --disk-cache-size=20971520 \
-  --enable-gpu-compositing \
-  --ignore-gpu-blocklist \
+  --disk-cache-size=10485760 \
   --disable-smooth-scrolling \
   http://localhost:8080/
