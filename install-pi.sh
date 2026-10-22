@@ -40,16 +40,16 @@ run_step() {
   
   while kill -0 $pid 2>/dev/null; do
     i=$(( (i+1) % 10 ))
-    echo -ne "\r${C}[${step_num}/6]${NC} ${Y}${spin[$i]}${NC} ${W}${title}...${NC}"
+    echo -ne "\r${C}[${step_num}/7]${NC} ${Y}${spin[$i]}${NC} ${W}${title}...${NC}"
     sleep 0.1
   done
   
   wait $pid
   local exit_code=$?
   if [ $exit_code -eq 0 ]; then
-    echo -e "\r${C}[${step_num}/6]${NC} ${G}✔${NC} ${W}${title}${NC} ${G}[OK]${NC}"
+    echo -e "\r${C}[${step_num}/7]${NC} ${G}✔${NC} ${W}${title}${NC} ${G}[OK]${NC}"
   else
-    echo -e "\r${C}[${step_num}/6]${NC} ${R}✖${NC} ${W}${title}${NC} ${R}[FALLÓ]${NC}"
+    echo -e "\r${C}[${step_num}/7]${NC} ${R}✖${NC} ${W}${title}${NC} ${R}[FALLÓ]${NC}"
     echo -e "\n${R}Últimas líneas del registro de error:${NC}"
     tail -n 12 "$LOG_FILE"
     exit 1
@@ -66,7 +66,11 @@ run_step 1 "Verificando motor gráfico Wayland" "
   fi
 "
 
-run_step 2 "Configurando compositor Labwc sin cursor" "
+run_step 2 "Asignando 128 MB de memoria a la GPU" "
+  sudo raspi-config nonint do_memory_split 128 2>/dev/null || true
+"
+
+run_step 3 "Configurando compositor Labwc sin cursor" "
   mkdir -p '$HOME/.config/labwc'
   printf '<?xml version=\"1.0\"?>\n<labwc_config>\n  <theme>\n    <cursorSize>1</cursorSize>\n  </theme>\n</labwc_config>\n' > '$HOME/.config/labwc/rc.xml'
   printf 'XCURSOR_SIZE=1\n' > '$HOME/.config/labwc/environment'
@@ -76,12 +80,12 @@ run_step 2 "Configurando compositor Labwc sin cursor" "
   printf 'XCURSOR_SIZE=1\n' | sudo tee /etc/xdg/labwc/environment >/dev/null
 "
 
-run_step 3 "Actualizando repositorios e instalando Chromium" "
+run_step 4 "Actualizando repositorios e instalando Chromium" "
   rm -rf '$HOME/.local/share/keyrings' 2>/dev/null || true
   sudo apt update -y && sudo apt install -y chromium-browser
 "
 
-run_step 4 "Creando entorno Python e instalando dependencias" "
+run_step 5 "Creando entorno Python e instalando dependencias" "
   if [ ! -d '$PROJECT_DIR/venv' ]; then
     python3 -m venv '$PROJECT_DIR/venv'
   fi
@@ -89,11 +93,11 @@ run_step 4 "Creando entorno Python e instalando dependencias" "
   '$PROJECT_DIR/venv/bin/pip' install -r '$PROJECT_DIR/requirements.txt'
 "
 
-run_step 5 "Generando lanzador start-kiosk.sh optimizado" "
+run_step 6 "Generando lanzador start-kiosk.sh optimizado" "
 cat << 'LAUNCHER' > '$PROJECT_DIR/start-kiosk.sh'
 #!/usr/bin/env bash
 
-# Fijar CPU en modo performance
+# Fijar CPU en 1.2 GHz fijos (modo performance)
 echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null 2>&1 || true
 
 pkill -f 'server.py' 2>/dev/null || true
@@ -126,7 +130,7 @@ LAUNCHER
 chmod +x '$PROJECT_DIR/start-kiosk.sh'
 "
 
-run_step 6 "Registrando autoarranque del sistema" "
+run_step 7 "Registrando autoarranque del sistema" "
 mkdir -p '$HOME/.config/autostart'
 cat << 'AUTO' > '$HOME/.config/autostart/kiosk.desktop'
 [Desktop Entry]
