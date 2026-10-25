@@ -15,7 +15,7 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 DB_DIR = os.path.join(BASE_DIR, 'db')
-DB_PATH = os.path.join(DB_DIR, 'tacos.db')
+DB_PATH = os.environ.get('DB_PATH', os.path.join(DB_DIR, 'tacos.db'))
 SCHEMA_PATH = os.path.join(DB_DIR, 'schema.sql')
 
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'hdp1985')
@@ -103,21 +103,20 @@ def get_db():
     return conn
 
 def init_db():
-    os.makedirs(DB_DIR, exist_ok=True)
+    parent_dir = os.path.dirname(DB_PATH)
+    if parent_dir:
+        os.makedirs(parent_dir, exist_ok=True)
     conn = get_db()
     try:
-        if os.path.exists(SCHEMA_PATH):
-            with open(SCHEMA_PATH, 'r', encoding='utf-8') as f:
-                sql = f.read()
-        else:
-            sql = DEFAULT_SCHEMA
-            try:
-                with open(SCHEMA_PATH, 'w', encoding='utf-8') as f:
-                    f.write(DEFAULT_SCHEMA)
-            except Exception:
-                pass
-        conn.executescript(sql)
-        conn.commit()
+        table_exists = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tacos'").fetchone()
+        if not table_exists:
+            if os.path.exists(SCHEMA_PATH):
+                with open(SCHEMA_PATH, 'r', encoding='utf-8') as f:
+                    sql = f.read()
+            else:
+                sql = DEFAULT_SCHEMA
+            conn.executescript(sql)
+            conn.commit()
     finally:
         conn.close()
 
