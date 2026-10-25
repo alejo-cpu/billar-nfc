@@ -123,17 +123,19 @@ def init_db():
 
 init_db()
 
-def get_next_available_number(conn):
-    rows = conn.execute("SELECT numero FROM tacos").fetchall()
-    existing = set()
-    for r in rows:
-        try:
-            existing.add(int(r["numero"]))
-        except (ValueError, TypeError):
-            pass
-    n = 1
-    while n in existing:
+def get_next_available_number(conn, start_from=1, exclude_set=None):
+    if exclude_set is None:
+        exclude_set = set()
+        rows = conn.execute("SELECT numero FROM tacos").fetchall()
+        for r in rows:
+            try:
+                exclude_set.add(int(r["numero"]))
+            except (ValueError, TypeError):
+                pass
+    n = max(1, start_from)
+    while n in exclude_set:
         n += 1
+    exclude_set.add(n)
     return f"{n:02d}"
 
 class LoginRequest(BaseModel):
@@ -194,6 +196,48 @@ class TacoModel(BaseModel):
             return cleaned
         return None
 
+class TacoBatchModel(BaseModel):
+    uids: List[str]
+    categoria_id: str
+    peso: int
+    agilidad: int
+    golpe: Optional[str] = "Equilibrado"
+    sensacion_texto: Optional[str] = "Natural y estable"
+    descripcion_custom: Optional[str] = None
+    ideal_custom: Optional[str] = None
+    numero_inicio: Optional[str] = None
+
+    @field_validator('uids')
+    @classmethod
+    def validate_uids(cls, v: List[str]):
+        if not v:
+            raise ValueError('Debes ingresar al menos un UID NFC.')
+        cleaned = []
+        seen = set()
+        for raw in v:
+            u = re.sub(r'[^0-9a-fA-F]', '', str(raw)).lower().strip()
+            if not u:
+                continue
+            if not re.match(r'^[0-9a-f]{4,32}$', u):
+                raise ValueError(f'UID inválido: "{raw}". Debe ser hexadecimal (4 a 32 caracteres).')
+            if u in seen:
+                continue
+            seen.add(u)
+            cleaned.append(u)
+        if not cleaned:
+            raise ValueError('No se ingresaron UIDs válidos.')
+        return cleaned
+
+    @field_validator('numero_inicio')
+    @classmethod
+    def validate_num_inicio(cls, v: Optional[str]):
+        if v is not None and v.strip() != "":
+            cleaned = v.strip()
+            if not re.match(r'^[0-9]{1,4}$', cleaned):
+                raise ValueError('El número inicial debe ser numérico.')
+            return cleaned
+        return None
+
 def verify_admin(x_admin_password: Optional[str] = Header(None)):
     if not x_admin_password or x_admin_password != ADMIN_PASSWORD:
         raise HTTPException(status_code=401, detail="No autorizado")
@@ -217,7 +261,6 @@ def login(req: LoginRequest):
     finally:
         conn.close()
 
-# Endpoint para descargar datos de Railway
 @app.get("/api/sync")
 def sync_data(request: Request, x_sync_token: Optional[str] = Header(None), token: Optional[str] = None):
     is_local = request.client and request.client.host in ("127.0.0.1", "localhost")
@@ -244,7 +287,6 @@ def sync_data(request: Request, x_sync_token: Optional[str] = Header(None), toke
     finally:
         conn.close()
 
-# Endpoint espejo: actualiza SQLite local y elimina lo que no exista en la nube
 @app.post("/api/sync/mirror")
 def mirror_database(data: MirrorPayload, request: Request, x_sync_token: Optional[str] = Header(None)):
     is_local = request.client and request.client.host in ("127.0.0.1", "localhost")
@@ -254,7 +296,6 @@ def mirror_database(data: MirrorPayload, request: Request, x_sync_token: Optiona
     conn = get_db()
     try:
         with conn:
-            # 1. Espejo de Categorías
             remote_cat_ids = [c["id"] for c in data.categorias if "id" in c]
             if remote_cat_ids:
                 placeholders = ",".join("?" * len(remote_cat_ids))
@@ -275,7 +316,6 @@ def mirror_database(data: MirrorPayload, request: Request, x_sync_token: Optiona
                     c.get("es_estandar", 0)
                 ))
 
-            # 2. Espejo de Tacos (Borrado automático de tacos no presentes en la nube)
             remote_uids = [t["nfc_uid"] for t in data.tacos if "nfc_uid" in t]
             if remote_uids:
                 placeholders = ",".join("?" * len(remote_uids))
@@ -369,6 +409,68 @@ def create_taco(taco: TacoModel, authorized: bool = Depends(verify_admin)):
         return {"status": "ok", "numero": numero}
     except sqlite3.IntegrityError:
         raise HTTPException(status_code=400, detail="UID NFC o Número ya registrado.")
+    finally:
+        conn.close()
+
+@app.post("/api/tacos/batch")
+def create_tacos_batch(batch: TacoBatchModel, authorized: bool = Depends(verify_admin)):
+    conn = get_db()
+    try:
+        with conn:
+            cat = conn.execute("SELECT id FROM categorias WHERE id = ?", (batch.categoria_id,)).fetchone()
+            if not cat:
+                raise HTTPException(status_code=400, detail=f"La categoría '{batch.categoria_id}' no existe.")
+
+            placeholders = ",".join("?" * len(batch.uids))
+            existing_rows = conn.execute(
+                f"SELECT nfc_uid FROM tacos WHERE LOWER(nfc_uid) IN ({placeholders})", batch.uids
+            ).fetchall()
+            if existing_rows:
+                existing_uids = [r["nfc_uid"] for r in existing_rows]
+                preview = ", ".join(existing_uids[:4])
+                more = f" y {len(existing_uids) - 4} más" if len(existing_uids) > 4 else ""
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"UIDs ya registrados ({len(existing_uids)}): {preview}{more}."
+                )
+
+            existing_nums = set()
+            for r in conn.execute("SELECT numero FROM tacos").fetchall():
+                try:
+                    existing_nums.add(int(r["numero"]))
+                except (ValueError, TypeError):
+                    pass
+
+            start_num = int(batch.numero_inicio) if batch.numero_inicio else 1
+            curr = max(1, start_num)
+            inserted = []
+
+            for uid in batch.uids:
+                while curr in existing_nums:
+                    curr += 1
+                num_str = f"{curr:02d}"
+                existing_nums.add(curr)
+
+                conn.execute("""
+                    INSERT INTO tacos (nfc_uid, numero, categoria_id, peso, agilidad, golpe, sensacion_texto, descripcion_custom, ideal_custom)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    uid,
+                    num_str,
+                    batch.categoria_id,
+                    batch.peso,
+                    batch.agilidad,
+                    batch.golpe,
+                    batch.sensacion_texto,
+                    batch.descripcion_custom,
+                    batch.ideal_custom
+                ))
+                inserted.append({"nfc_uid": uid, "numero": num_str})
+                curr += 1
+
+        return {"status": "ok", "count": len(inserted), "tacos": inserted}
+    except sqlite3.IntegrityError as e:
+        raise HTTPException(status_code=400, detail=f"Error en base de datos: {str(e)}")
     finally:
         conn.close()
 

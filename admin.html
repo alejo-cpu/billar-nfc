@@ -6,7 +6,6 @@
   <title>HDP Billar · Gestión</title>
   <link rel="stylesheet" href="css/styles.css">
   <style>
-    /* Restaurar el mouse para el panel de administración */
     *, html, body {
       cursor: auto !important;
     }
@@ -178,7 +177,7 @@
       grid-template-columns: 1fr 340px;
       gap: 22px;
       width: 100%;
-      max-width: 940px;
+      max-width: 960px;
       height: 88vh;
       max-height: 92vh;
       background: #0f1116;
@@ -191,11 +190,14 @@
       display: flex;
       flex-direction: column;
       justify-content: center;
+      max-height: 100%;
+      overflow-y: auto;
+      padding-right: 6px;
     }
     .form-pane form {
       display: flex;
       flex-direction: column;
-      gap: 22px;
+      gap: 16px;
     }
     .preview-col {
       display: flex;
@@ -228,7 +230,7 @@
     .form-row { display: flex; gap: 10px; }
     .form-row .form-group { flex: 1; }
 
-    #f_ideal_custom{
+    #f_ideal_custom, #b_ideal_custom {
       width: 100%;
     }
 
@@ -254,6 +256,43 @@
       text-align: left;
       flex: none;
       padding: 4px 0;
+    }
+
+    .uid-chips-container {
+      min-height: 54px;
+      max-height: 110px;
+      overflow-y: auto;
+      background: #07080b;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      padding: 6px 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: flex-start;
+      align-content: flex-start;
+    }
+    .uid-chip {
+      background: #1b1e28;
+      border: 1px solid #363b49;
+      color: var(--text);
+      font-family: monospace;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .uid-chip-remove {
+      color: var(--red);
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 12px;
+      line-height: 1;
+    }
+    .uid-chip-remove:hover {
+      opacity: 0.8;
     }
 
     #toastContainer {
@@ -288,7 +327,6 @@
 
   <div id="toastContainer"></div>
 
-  <!-- LOGIN -->
   <div id="loginGate" class="modal-overlay active">
     <div class="modal-box" style="max-width: 350px; text-align: center;">
       <h2 style="color: var(--hdp); margin-bottom: 6px; font-family: var(--f-pixel); font-size: 15px;">HDP BILLAR</h2>
@@ -299,7 +337,6 @@
     </div>
   </div>
 
-  <!-- CONFIRMAR BORRADO -->
   <div id="deleteModal" class="modal-overlay">
     <div class="modal-box" style="max-width: 380px; text-align: center;">
       <h3 style="color: var(--red); margin-bottom: 10px;">Confirmar Eliminación</h3>
@@ -311,17 +348,15 @@
     </div>
   </div>
 
-  <!-- PREVIEW MÓVIL -->
   <div id="mobilePreviewModal" class="modal-overlay">
     <div style="position: relative;">
-      <button class="btn btn-secondary" style="position: absolute; top: -42px; right: 0;" onclick="closeMobilePreview()">✕ Cerrar</button>
+      <button class="btn btn-secondary" style="position: absolute; top: -42px; right: 0;" onclick="closeMobilePreview()">&times; Cerrar</button>
       <div class="preview-box-container" style="height: 82vh; max-height: 520px;">
         <div id="mobilePreviewCanvas" class="preview-scaler-inner"></div>
       </div>
     </div>
   </div>
 
-  <!-- APLICACIÓN PRINCIPAL -->
   <div class="admin-container" id="adminApp" style="display: none;">
     <div class="top-header">
       <div>
@@ -331,37 +366,36 @@
       <div class="header-btns">
         <button id="btnEditCats" class="btn btn-secondary" onclick="openCategoriesManager()">Editar Categorías</button>
         <button id="btnNewCat" class="btn btn-secondary" onclick="openNewCategoryModal()">+ Nueva Categoría</button>
+        <button id="btnBatchTaco" class="btn btn-secondary" onclick="openBatchModal()">+ Registro Múltiple</button>
         <button id="btnTacoModal" class="btn" onclick="openTacoModal()">+ Nuevo Taco</button>
       </div>
     </div>
 
     <div class="search-bar">
-      <input type="text" id="searchInput" class="input-text" placeholder="🔍 Escanear NFC o buscar número (#07)..." autofocus oninput="renderCues()">
+      <input type="text" id="searchInput" class="input-text" placeholder="Escanear NFC o buscar número (#07)..." autofocus oninput="renderCues()">
       <select id="filterCategory" class="filter-select" onchange="renderCues()"></select>
     </div>
 
     <div id="cuesList"></div>
   </div>
 
-  <!-- MODAL: GESTOR DE CATEGORÍAS -->
   <div id="catManagerModal" class="modal-overlay">
     <div class="modal-box" style="max-width: 600px;">
       <div class="modal-header">
         <h3 style="color: var(--hdp);">Categorías Existentes</h3>
-        <button class="btn btn-secondary" onclick="closeModals()">✕</button>
+        <button class="btn btn-secondary" onclick="closeModals()">&times;</button>
       </div>
       <p style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">Las categorías estándar (LIGHT, BALANCED, POWER) son fijas y no se pueden modificar.</p>
       <div id="catListContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>
     </div>
   </div>
 
-  <!-- MODAL: CREAR / EDITAR CATEGORÍA -->
   <div id="catEditModal" class="modal-overlay">
     <div class="modal-box-split">
       <div class="form-pane">
         <div class="modal-header">
           <h3 id="catEditModalTitle" style="color: var(--hdp);">Nueva Categoría</h3>
-          <button class="btn btn-secondary" onclick="closeModals()">✕</button>
+          <button class="btn btn-secondary" onclick="closeModals()">&times;</button>
         </div>
         <form id="catForm" onsubmit="return false;" onkeydown="if(event.key==='Enter'&&event.target.tagName!=='TEXTAREA'){event.preventDefault();}">
           
@@ -419,7 +453,7 @@
           </div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-            <button type="button" class="btn btn-secondary mobile-preview-btn" onclick="openMobilePreview('cat')">👁️ Ver Preview</button>
+            <button type="button" class="btn btn-secondary mobile-preview-btn" onclick="openMobilePreview('cat')">Ver Preview</button>
             <button id="btnSaveCat" type="button" class="btn" onclick="saveCategory()">Guardar Categoría</button>
           </div>
         </form>
@@ -433,13 +467,15 @@
     </div>
   </div>
 
-  <!-- MODAL: CREAR / EDITAR TACO -->
   <div id="tacoModal" class="modal-overlay">
     <div class="modal-box-split">
       <div class="form-pane">
         <div class="modal-header">
-          <h3 id="tacoModalTitle" style="color: var(--hdp);">Nuevo Taco</h3>
-          <button class="btn btn-secondary" onclick="closeModals()">✕</button>
+          <div>
+            <h3 id="tacoModalTitle" style="color: var(--hdp);">Nuevo Taco</h3>
+            <span id="quickBatchLink" style="font-size: 11px; color: var(--muted); cursor: pointer;" onclick="closeModals(); openBatchModal();">¿Registrar varios a la vez? <u style="color: var(--hdp);">Registro Múltiple</u></span>
+          </div>
+          <button class="btn btn-secondary" onclick="closeModals()">&times;</button>
         </div>
         <form id="tacoForm" onsubmit="return false;" onkeydown="if(event.key==='Enter'&&event.target.tagName!=='TEXTAREA'){event.preventDefault();}">
           
@@ -447,7 +483,7 @@
             <label>Código NFC (UID Hexadecimal)</label>
             <div style="display: flex; gap: 8px;">
               <input type="text" id="f_uid" class="input-text" required maxlength="32" placeholder="0-9, a-f..." oninput="validateUIDInput(this); updateTacoPreview();">
-              <button type="button" class="btn btn-secondary" id="btnWebNFC" onclick="scanWebNFC()" style="display: none;">📲 NFC</button>
+              <button type="button" class="btn btn-secondary" id="btnWebNFC" onclick="scanWebNFC('f_uid')" style="display: none;">NFC</button>
             </div>
           </div>
 
@@ -494,9 +530,9 @@
             <input type="text" id="f_ideal_custom" class="input-text" maxlength="85" placeholder="Dejar en blanco para usar el de su categoría..." oninput="updateTacoPreview()">
           </div>
 
-          <div style="display: flex; justify-content: center; align-items: center; margin-top: 8px;">
-            <button type="button" class="btn btn-secondary mobile-preview-btn" onclick="openMobilePreview('taco')">👁️ Ver Preview</button>
-            <button type="button" id="btnSubmitTaco" class="btn" onclick="saveTaco()">Guardar Taco</button>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+            <button type="button" class="btn btn-secondary mobile-preview-btn" onclick="openMobilePreview('taco')">Ver Preview</button>
+            <button type="button" id="btnSubmitTaco" class="btn" style="margin-left: auto;" onclick="saveTaco()">Guardar Taco</button>
           </div>
         </form>
       </div>
@@ -509,11 +545,108 @@
     </div>
   </div>
 
+  <div id="batchModal" class="modal-overlay">
+    <div class="modal-box-split">
+      <div class="form-pane">
+        <div class="modal-header">
+          <div>
+            <h3 style="color: var(--hdp);">Registro Múltiple de Tacos</h3>
+            <span style="font-size: 11px; color: var(--muted);">Mismas especificaciones para múltiples UIDs</span>
+          </div>
+          <button class="btn btn-secondary" onclick="closeModals()">&times;</button>
+        </div>
+        
+        <form id="batchForm" onsubmit="return false;" onkeydown="if(event.key==='Enter'&&event.target.id!=='batch_paste_uids'&&event.target.tagName!=='TEXTAREA'){event.preventDefault();}">
+          
+          <div class="form-group" style="background: var(--panel2); padding: 10px; border-radius: 8px; border: 1px solid var(--line);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label style="margin: 0;">UIDs a registrar (<b id="batch_uid_count" style="color: var(--hdp);">0</b> agregados)</label>
+              <button type="button" class="btn btn-secondary" style="padding: 2px 7px; font-size: 10px;" onclick="clearBatchUIDs()">Limpiar</button>
+            </div>
+            
+            <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+              <input type="text" id="batch_quick_uid" class="input-text" placeholder="Escanear NFC con lector (Enter agrega)..." onkeydown="handleBatchQuickInput(event)">
+              <button type="button" class="btn btn-secondary" onclick="addBatchUIDFromInput()">+ Agregar</button>
+              <button type="button" class="btn btn-secondary" id="btnWebNFCBatch" onclick="scanWebNFCBatch()" style="display: none;">NFC</button>
+            </div>
+
+            <div id="batch_chips_list" class="uid-chips-container">
+              <span style="font-size: 11px; color: var(--muted); align-self: center; margin: auto;">No hay UIDs agregados aún. Escaneá o pegá abajo.</span>
+            </div>
+
+            <div style="margin-top: 8px;">
+              <span style="font-size: 11px; color: var(--muted); cursor: pointer; text-decoration: underline;" onclick="togglePasteArea()">+ Pegar lista de UIDs</span>
+              <div id="batch_paste_container" style="display: none; margin-top: 6px;">
+                <textarea id="batch_paste_uids" class="input-text" rows="3" style="width: 100%; font-family: monospace; font-size: 11px; resize: vertical;" placeholder="Pegá aquí UIDs separados por líneas, comas o espacios..."></textarea>
+                <button type="button" class="btn btn-secondary" style="margin-top: 4px; font-size: 11px; padding: 4px 10px;" onclick="importPastedUIDs()">Importar lista</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Número inicial (Auto si vacío)</label>
+              <input type="text" id="b_numero_inicio" class="input-text" maxlength="4" placeholder="Ej: 13 (correlativo)" oninput="validateNumeroInput(this); updateBatchPreview();">
+            </div>
+            <div class="form-group">
+              <label>Categoría</label>
+              <select id="b_categoria" class="filter-select" style="width: 100%;" required onchange="onBatchCategorySelectChange()"></select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Peso (1 al 5): <b id="val_b_peso">3</b></label>
+              <input type="range" id="b_peso" min="1" max="5" value="3" style="width: 100%; accent-color: var(--hdp);" oninput="document.getElementById('val_b_peso').innerText = this.value; updateBatchPreview();">
+            </div>
+            <div class="form-group">
+              <label>Agilidad (1 al 5): <b id="val_b_agilidad">3</b></label>
+              <input type="range" id="b_agilidad" min="1" max="5" value="3" style="width: 100%; accent-color: var(--hdp);" oninput="document.getElementById('val_b_agilidad').innerText = this.value; updateBatchPreview();">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Golpe</label>
+              <input type="text" id="b_golpe" class="input-text" maxlength="20" placeholder="Equilibrado" oninput="updateBatchPreview()">
+            </div>
+            <div class="form-group">
+              <label>Sensación corta</label>
+              <input type="text" id="b_sens_texto" class="input-text" maxlength="30" placeholder="Natural y estable" oninput="updateBatchPreview()">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Descripción personalizada (Opcional)</label>
+            <textarea id="b_desc_custom" class="input-text" rows="2" style="width: 100%; resize: none;" maxlength="140" placeholder="Dejar en blanco para usar la de su categoría..." oninput="updateBatchPreview()"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Ideal para (Opcional)</label>
+            <input type="text" id="b_ideal_custom" class="input-text" maxlength="85" placeholder="Dejar en blanco para usar el de su categoría..." oninput="updateBatchPreview()">
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+            <button type="button" class="btn btn-secondary mobile-preview-btn" onclick="openMobilePreview('batch')">Ver Preview</button>
+            <button type="button" id="btnSubmitBatch" class="btn" style="margin-left: auto;" onclick="saveBatchTacos()">Guardar Registro (0 Tacos)</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="preview-col">
+        <div class="preview-box-container">
+          <div id="batchPreviewCanvas" class="preview-scaler-inner"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     let TOKEN = localStorage.getItem('HDP_ADMIN_TOKEN') || '';
     let PERMISOS = JSON.parse(localStorage.getItem('HDP_PERMISOS') || '{"crear":true,"editar":true,"eliminar":true,"categorias":true,"rol":"admin"}');
     let CATEGORIAS = [];
     let TACOS = [];
+    let BATCH_UIDS = [];
 
     if (TOKEN) {
       document.getElementById('loginGate').classList.remove('active');
@@ -551,13 +684,13 @@
       input.value = input.value.replace(/[^0-9]/g, '');
     }
 
-    function calculateNextNumber() {
+    function calculateNextNumber(startFrom = 1) {
       const existing = new Set();
       TACOS.forEach(t => {
         const n = parseInt(t.numero, 10);
         if (!isNaN(n)) existing.add(n);
       });
-      let n = 1;
+      let n = Math.max(1, startFrom);
       while (existing.has(n)) {
         n++;
       }
@@ -589,7 +722,12 @@
 
     function applyPermissions() {
       document.getElementById('userBadge').innerText = `Rol: ${PERMISOS.rol.toUpperCase()}`;
-      if (!PERMISOS.crear) document.getElementById('btnTacoModal').style.display = 'none';
+      if (!PERMISOS.crear) {
+        document.getElementById('btnTacoModal').style.display = 'none';
+        document.getElementById('btnBatchTaco').style.display = 'none';
+        const qLink = document.getElementById('quickBatchLink');
+        if (qLink) qLink.style.display = 'none';
+      }
       if (!PERMISOS.categorias) {
         document.getElementById('btnEditCats').style.display = 'none';
         document.getElementById('btnNewCat').style.display = 'none';
@@ -611,12 +749,15 @@
     function populateCategorySelects() {
       const filter = document.getElementById('filterCategory');
       const formSel = document.getElementById('f_categoria');
+      const batchSel = document.getElementById('b_categoria');
       filter.innerHTML = '<option value="ALL">Todas las Categorías</option>';
       formSel.innerHTML = '';
+      batchSel.innerHTML = '';
       
       CATEGORIAS.forEach(c => {
         filter.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
         formSel.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
+        batchSel.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
       });
     }
 
@@ -632,6 +773,20 @@
         if (!document.getElementById('f_sens_texto').value) document.getElementById('f_sens_texto').value = cat.sensacion_texto_default || 'Natural y estable';
       }
       updateTacoPreview();
+    }
+
+    function onBatchCategorySelectChange() {
+      const catId = document.getElementById('b_categoria').value;
+      const cat = CATEGORIAS.find(c => c.id === catId);
+      if (cat) {
+        document.getElementById('b_peso').value = cat.peso_default || 3;
+        document.getElementById('val_b_peso').innerText = cat.peso_default || 3;
+        document.getElementById('b_agilidad').value = cat.agilidad_default || 3;
+        document.getElementById('val_b_agilidad').innerText = cat.agilidad_default || 3;
+        if (!document.getElementById('b_golpe').value) document.getElementById('b_golpe').value = cat.golpe_default || 'Equilibrado';
+        if (!document.getElementById('b_sens_texto').value) document.getElementById('b_sens_texto').value = cat.sensacion_texto_default || 'Natural y estable';
+      }
+      updateBatchPreview();
     }
 
     function renderCues() {
@@ -661,7 +816,7 @@
           </div>
           <div class="actions">
             ${PERMISOS.editar ? `<button class="btn btn-secondary" onclick="editTaco('${t.nfc_uid}')">Editar</button>` : ''}
-            ${PERMISOS.eliminar ? `<button class="btn btn-danger" onclick="promptDeleteTaco('${t.nfc_uid}', '${t.numero}')">✕</button>` : ''}
+            ${PERMISOS.eliminar ? `<button class="btn btn-danger" onclick="promptDeleteTaco('${t.nfc_uid}', '${t.numero}')">&times;</button>` : ''}
           </div>
         </div>
       `).join('');
@@ -670,6 +825,9 @@
     function openTacoModal(isEdit = false) {
       document.getElementById('tacoModalTitle').innerText = isEdit ? 'Editar Taco' : 'Nuevo Taco';
       document.getElementById('f_uid').readOnly = isEdit;
+      const qLink = document.getElementById('quickBatchLink');
+      if (qLink) qLink.style.display = isEdit ? 'none' : 'block';
+
       document.getElementById('tacoModal').classList.add('active');
       if (!isEdit) {
         document.getElementById('tacoForm').reset();
@@ -706,11 +864,14 @@
 
     function openMobilePreview(type) {
       if (type === 'taco') updateTacoPreview();
+      else if (type === 'batch') updateBatchPreview();
       else updateCatPreview();
 
       const source = type === 'taco'
         ? document.getElementById('tacoPreviewCanvas').innerHTML
-        : document.getElementById('catPreviewCanvas').innerHTML;
+        : type === 'batch'
+          ? document.getElementById('batchPreviewCanvas').innerHTML
+          : document.getElementById('catPreviewCanvas').innerHTML;
 
       document.getElementById('mobilePreviewCanvas').innerHTML = source;
       document.getElementById('mobilePreviewModal').classList.add('active');
@@ -779,7 +940,7 @@
     }
 
     function promptDeleteTaco(uid, num) {
-      document.getElementById('deleteMessage').innerText = `¿Seguro que deseas eliminar el Taco #${num} con UID ${uid}?`;
+      document.getElementById('deleteMessage').innerText = `¿Eliminar el Taco #${num} (${uid})?`;
       document.getElementById('btnConfirmDelete').onclick = async () => {
         const res = await fetch(`/api/tacos/${uid}`, {
           method: 'DELETE',
@@ -796,6 +957,174 @@
       document.getElementById('deleteModal').classList.add('active');
     }
 
+    function openBatchModal() {
+      BATCH_UIDS = [];
+      document.getElementById('batchForm').reset();
+      document.getElementById('b_numero_inicio').value = calculateNextNumber();
+      document.getElementById('val_b_peso').innerText = '3';
+      document.getElementById('val_b_agilidad').innerText = '3';
+      document.getElementById('batch_paste_container').style.display = 'none';
+      renderBatchChips();
+      onBatchCategorySelectChange();
+      document.getElementById('batchModal').classList.add('active');
+      setTimeout(() => document.getElementById('batch_quick_uid').focus(), 150);
+    }
+
+    function togglePasteArea() {
+      const area = document.getElementById('batch_paste_container');
+      area.style.display = area.style.display === 'none' ? 'block' : 'none';
+      if (area.style.display === 'block') {
+        document.getElementById('batch_paste_uids').focus();
+      }
+    }
+
+    function handleBatchQuickInput(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addBatchUIDFromInput();
+      }
+    }
+
+    function addBatchUIDFromInput() {
+      const input = document.getElementById('batch_quick_uid');
+      const val = input.value.replace(/[^0-9a-fA-F]/g, '').toLowerCase().trim();
+      if (!val) return;
+
+      if (val.length < 4 || val.length > 32) {
+        showToast('El UID debe ser hexadecimal (4 a 32 caracteres)', 'error');
+        return;
+      }
+
+      if (BATCH_UIDS.includes(val)) {
+        showToast('UID ya agregado a la lista', 'error');
+        input.value = '';
+        return;
+      }
+
+      const yaRegistrado = TACOS.some(t => t.nfc_uid.toLowerCase() === val);
+      if (yaRegistrado) {
+        showToast(`El UID ${val} ya existe en el sistema`, 'error');
+        input.value = '';
+        return;
+      }
+
+      BATCH_UIDS.push(val);
+      input.value = '';
+      renderBatchChips();
+      updateBatchPreview();
+      input.focus();
+    }
+
+    function importPastedUIDs() {
+      const textarea = document.getElementById('batch_paste_uids');
+      const rawText = textarea.value;
+      if (!rawText.trim()) return;
+
+      const tokens = rawText.split(/[\r\n,;\s]+/);
+      let agregados = 0;
+      let duplicados = 0;
+
+      tokens.forEach(t => {
+        const clean = t.replace(/[^0-9a-fA-F]/g, '').toLowerCase().trim();
+        if (clean.length >= 4 && clean.length <= 32) {
+          if (!BATCH_UIDS.includes(clean)) {
+            const yaRegistrado = TACOS.some(x => x.nfc_uid.toLowerCase() === clean);
+            if (!yaRegistrado) {
+              BATCH_UIDS.push(clean);
+              agregados++;
+            } else {
+              duplicados++;
+            }
+          }
+        }
+      });
+
+      textarea.value = '';
+      document.getElementById('batch_paste_container').style.display = 'none';
+      renderBatchChips();
+      updateBatchPreview();
+
+      if (agregados > 0) showToast(`Se agregaron ${agregados} UIDs.`);
+      if (duplicados > 0) showToast(`${duplicados} UIDs omitidos por ya estar registrados.`, 'error');
+    }
+
+    function removeBatchUID(idx) {
+      BATCH_UIDS.splice(idx, 1);
+      renderBatchChips();
+      updateBatchPreview();
+    }
+
+    function clearBatchUIDs() {
+      BATCH_UIDS = [];
+      renderBatchChips();
+      updateBatchPreview();
+    }
+
+    function renderBatchChips() {
+      const container = document.getElementById('batch_chips_list');
+      const countEl = document.getElementById('batch_uid_count');
+      const submitBtn = document.getElementById('btnSubmitBatch');
+      countEl.innerText = BATCH_UIDS.length;
+      submitBtn.innerText = `Guardar Registro (${BATCH_UIDS.length} Tacos)`;
+      submitBtn.disabled = BATCH_UIDS.length === 0;
+
+      if (BATCH_UIDS.length === 0) {
+        container.innerHTML = '<span style="font-size: 11px; color: var(--muted); align-self: center; margin: auto;">No hay UIDs agregados aún. Escaneá o pegá abajo.</span>';
+        return;
+      }
+
+      container.innerHTML = BATCH_UIDS.map((uid, i) => `
+        <div class="uid-chip">
+          <span>#${i+1} ${uid}</span>
+          <span class="uid-chip-remove" title="Quitar" onclick="removeBatchUID(${i})">&times;</span>
+        </div>
+      `).join('');
+    }
+
+    async function saveBatchTacos() {
+      if (BATCH_UIDS.length === 0) {
+        showToast('Debes ingresar al menos un UID NFC', 'error');
+        return;
+      }
+
+      const numStart = document.getElementById('b_numero_inicio').value.trim();
+      const payload = {
+        uids: BATCH_UIDS,
+        categoria_id: document.getElementById('b_categoria').value,
+        peso: parseInt(document.getElementById('b_peso').value),
+        agilidad: parseInt(document.getElementById('b_agilidad').value),
+        golpe: document.getElementById('b_golpe').value.trim() || 'Equilibrado',
+        sensacion_texto: document.getElementById('b_sens_texto').value.trim() || 'Natural y estable',
+        descripcion_custom: document.getElementById('b_desc_custom').value.trim() || null,
+        ideal_custom: document.getElementById('b_ideal_custom').value.trim() || null,
+        numero_inicio: numStart || null
+      };
+
+      try {
+        const res = await fetch('/api/tacos/batch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Password': TOKEN
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          showToast(parseErrorMessage(err), 'error');
+          return;
+        }
+
+        const data = await res.json();
+        showToast(`Se registraron ${data.count} tacos con éxito.`);
+        closeModals();
+        loadData();
+      } catch (err) {
+        showToast('Error de conexión al guardar lote', 'error');
+      }
+    }
+
     function renderCatList() {
       const container = document.getElementById('catListContainer');
       container.innerHTML = CATEGORIAS.map(c => `
@@ -810,7 +1139,7 @@
             ${c.es_estandar ? `
               <span style="font-size: 11px; color: var(--muted); padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px;">Fija / Estándar</span>
             ` : `
-              <button class="btn btn-danger" style="padding: 5px 9px; font-size: 12px;" onclick="promptDeleteCategory('${c.id}', '${c.nombre}')">✕ Eliminar</button>
+              <button class="btn btn-danger" style="padding: 5px 9px; font-size: 12px;" onclick="promptDeleteCategory('${c.id}', '${c.nombre}')">Eliminar</button>
               <button class="btn btn-secondary" style="padding: 5px 12px; font-size: 12px;" onclick="loadCatToForm('${c.id}')">Editar</button>
             `}
           </div>
@@ -883,7 +1212,7 @@
     }
 
     function promptDeleteCategory(id, nombre) {
-      document.getElementById('deleteMessage').innerText = `¿Seguro que deseas eliminar la categoría "${nombre}" (${id})?`;
+      document.getElementById('deleteMessage').innerText = `¿Eliminar la categoría "${nombre}" (${id})?`;
       document.getElementById('btnConfirmDelete').onclick = async () => {
         try {
           const res = await fetch(`/api/categorias/${id}`, {
@@ -907,16 +1236,37 @@
 
     if ('NDEFReader' in window) {
       const btn = document.getElementById('btnWebNFC');
+      const btnBatch = document.getElementById('btnWebNFCBatch');
       if (btn) btn.style.display = 'inline-flex';
+      if (btnBatch) btnBatch.style.display = 'inline-flex';
     }
 
-    async function scanWebNFC() {
+    async function scanWebNFC(targetId) {
       try {
         const ndef = new NDEFReader();
         await ndef.scan();
         ndef.onreading = event => {
-          document.getElementById('f_uid').value = event.serialNumber.replace(/:/g, '').toLowerCase();
+          document.getElementById(targetId).value = event.serialNumber.replace(/[^0-9a-fA-F]/g, '').toLowerCase();
           updateTacoPreview();
+        };
+      } catch (err) {
+        showToast('NFC no disponible: ' + err, 'error');
+      }
+    }
+
+    async function scanWebNFCBatch() {
+      try {
+        const ndef = new NDEFReader();
+        await ndef.scan();
+        showToast('Acercar tacos al lector...');
+        ndef.onreading = event => {
+          const uid = event.serialNumber.replace(/[^0-9a-fA-F]/g, '').toLowerCase();
+          if (uid && !BATCH_UIDS.includes(uid)) {
+            BATCH_UIDS.push(uid);
+            renderBatchChips();
+            updateBatchPreview();
+            showToast(`UID agregado: ${uid}`);
+          }
         };
       } catch (err) {
         showToast('NFC no disponible: ' + err, 'error');
@@ -1018,6 +1368,24 @@
       const ideal = document.getElementById('f_ideal_custom').value.trim() || cat.ideal_default;
 
       document.getElementById('tacoPreviewCanvas').innerHTML = renderKioskTemplate(num, cat, peso, agilidad, golpe, sensTxt, desc, ideal);
+    }
+
+    function updateBatchPreview() {
+      const numInput = document.getElementById('b_numero_inicio').value.trim();
+      const start = numInput ? parseInt(numInput, 10) : 1;
+      const num = calculateNextNumber(isNaN(start) ? 1 : start);
+      const catId = document.getElementById('b_categoria').value;
+      const cat = CATEGORIAS.find(c => c.id === catId) || CATEGORIAS[0] || {
+        nombre: 'CATEGORÍA', color: '#f0c928', tagline: 'Sensación', descripcion_default: 'Descripción...', ideal_default: 'Jugadores...'
+      };
+      const peso = parseInt(document.getElementById('b_peso').value) || 3;
+      const agilidad = parseInt(document.getElementById('b_agilidad').value) || 3;
+      const golpe = document.getElementById('b_golpe').value || 'Equilibrado';
+      const sensTxt = document.getElementById('b_sens_texto').value || 'Natural y estable';
+      const desc = document.getElementById('b_desc_custom').value.trim() || cat.descripcion_default;
+      const ideal = document.getElementById('b_ideal_custom').value.trim() || cat.ideal_default;
+
+      document.getElementById('batchPreviewCanvas').innerHTML = renderKioskTemplate(num, cat, peso, agilidad, golpe, sensTxt, desc, ideal);
     }
 
     function updateCatPreview() {
